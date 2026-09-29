@@ -52,5 +52,8 @@ jobs:
       - name: Check stage 6 NPC dialogue
         run: godot --headless --path . --script res://tests/stage6_npc_dialogue_smoke_test.gd
 
+      - name: Check stage 7 wireframe reconciliation
+        run: godot --headless --path . --script res://tests/stage7_wireframe_reconciliation_smoke_test.gd
+
       - name: Launch main scene
         run: godot --headless --path . --quit-after 2
