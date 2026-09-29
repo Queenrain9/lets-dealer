@@ -8,6 +8,8 @@ static func build(seed: int = 1, roster: Array[NPCProfile] = []) -> Array[Dictio
 	hands.append({
 		"id": "hand_01",
 		"label": "HAND 1 / 3",
+		"starting_stacks": [8000, 9000, 1800, 10000, 8000, 10000],
+		"blinds": [300, 600],
 		"board": ["J♦", "10♥", "7♠", "3♦", "2♣"],
 		"preflop": {
 			"events": [
@@ -61,6 +63,8 @@ static func build(seed: int = 1, roster: Array[NPCProfile] = []) -> Array[Dictio
 	hands.append({
 		"id": "hand_02",
 		"label": "HAND 2 / 3",
+		"starting_stacks": [12000, 12000, 9000, 10000, 9000, 12000],
+		"blinds": [300, 600],
 		"board": ["Q♣", "8♣", "4♥", "8♦", "K♠"],
 		"preflop": {
 			"events": [
@@ -116,6 +120,8 @@ static func build(seed: int = 1, roster: Array[NPCProfile] = []) -> Array[Dictio
 	hands.append({
 		"id": "hand_03",
 		"label": "HAND 3 / 3",
+		"starting_stacks": [12000, 9000, 12000, 3400, 9000, 7500],
+		"blinds": [300, 600],
 		"board": ["A♦", "9♣", "6♣", "Q♥", "6♠"],
 		"preflop": {
 			"events": [
@@ -226,6 +232,7 @@ static func _randomize_round(round_data: Dictionary, rng: RandomNumberGenerator,
 	var raw_events: Variant = round_data.get("events", [])
 	if raw_events is Array:
 		var events: Array = raw_events as Array
+		_apply_personality_bet_sizing(events, rng, roster)
 		var previous_base: float = 0.0
 		var current_time: float = 0.0
 		for raw: Variant in events:
@@ -261,6 +268,59 @@ static func _randomize_round(round_data: Dictionary, rng: RandomNumberGenerator,
 		request["patience"] = maxf(2.8, 5.0 * profile.patience * rng.randf_range(0.90, 1.10))
 		request["tip"] = int(round(150.0 * profile.tip_multiplier))
 		request["t"] = maxf(0.45, float(request.get("t", 0.8)) * profile.action_speed * rng.randf_range(0.85, 1.10))
+
+
+
+static func _apply_personality_bet_sizing(
+	events: Array,
+	rng: RandomNumberGenerator,
+	roster: Array[NPCProfile]
+) -> void:
+	var current_high: int = 0
+	for raw: Variant in events:
+		if not raw is Dictionary:
+			continue
+		var event: Dictionary = raw as Dictionary
+		var seat: int = int(event.get("seat", -1))
+		var state: String = String(event.get("state", ""))
+		var upper: String = state.to_upper()
+		var target: int = int(event.get("bet", 0))
+
+		if upper.begins_with("BET ") or upper.begins_with("RAISE "):
+			var aggression: float = 1.0
+			if seat >= 0 and seat < roster.size():
+				aggression = roster[seat].aggression
+			var factor: float = clampf(aggression * rng.randf_range(0.94, 1.06), 0.82, 1.24)
+			var adjusted: int = _round_to_hundred(maxi(100, int(round(float(target) * factor))))
+			if current_high > 0 and adjusted <= current_high:
+				adjusted = current_high + 100
+			event["bet"] = adjusted
+			current_high = adjusted
+			var verb: String = "BET" if upper.begins_with("BET ") else "RAISE"
+			event["state"] = "%s %s" % [verb, _format_amount(adjusted)]
+		elif upper.begins_with("ALL IN"):
+			current_high = maxi(current_high, target)
+		elif upper.begins_with("CALL") and target > 0:
+			var call_target: int = maxi(target, current_high)
+			event["bet"] = call_target
+			current_high = maxi(current_high, call_target)
+			event["state"] = "CALL %s" % _format_amount(call_target)
+
+
+static func _round_to_hundred(value: int) -> int:
+	return maxi(100, int(round(float(value) / 100.0)) * 100)
+
+
+static func _format_amount(value: int) -> String:
+	var raw: String = str(value)
+	var result: String = ""
+	var count: int = 0
+	for i in range(raw.length() - 1, -1, -1):
+		if count > 0 and count % 3 == 0:
+			result = "," + result
+		result = raw[i] + result
+		count += 1
+	return result
 
 
 static func _pick_request_seat(rng: RandomNumberGenerator, roster: Array[NPCProfile]) -> int:
