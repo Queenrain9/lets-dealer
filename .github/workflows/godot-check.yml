@@ -55,5 +55,8 @@ jobs:
       - name: Check stage 7 wireframe reconciliation
         run: godot --headless --path . --script res://tests/stage7_wireframe_reconciliation_smoke_test.gd
 
+      - name: Check stage 8 real table state
+        run: godot --headless --path . --script res://tests/stage8_real_table_state_smoke_test.gd
+
       - name: Launch main scene
         run: godot --headless --path . --quit-after 2
