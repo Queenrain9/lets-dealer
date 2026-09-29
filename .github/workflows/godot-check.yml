@@ -16,9 +16,12 @@ jobs:
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v2
         with:
-          version: 4.4.1
+          version: 4.7.2
           use-dotnet: false
           include-templates: false
 
       - name: Import and parse project
         run: godot --headless --path . --editor --quit
+
+      - name: Run core gameplay smoke test
+        run: godot --headless --path . --script res://tests/core_smoke_test.gd
