@@ -1,7 +1,12 @@
 extends Control
 
-const MIN_CARD_SWIPE_DISTANCE: float = 42.0
-const MIN_CHIP_SWEEP_DISTANCE: float = 34.0
+const MOUSE_POINTER_ID: int = -1
+
+enum InteractionKind {
+	NONE,
+	CARD,
+	CHIP,
+}
 
 @onready var phase_label: Label = $PhaseLabel
 @onready var stats_label: Label = $StatsLabel
@@ -18,8 +23,15 @@ var card_zone_panels: Array[Control] = []
 var card_rows: Array[HBoxContainer] = []
 var chip_stacks: Array[SwipeChipStack] = []
 
+var _interaction_kind: InteractionKind = InteractionKind.NONE
+var _active_pointer_id: int = MOUSE_POINTER_ID
+var _active_chip_index: int = -1
+var _gesture_start: Vector2 = Vector2.ZERO
+
 func _ready() -> void:
-	var table_config: TableConfig = load("res://data/table_configs/prototype_table.tres") as TableConfig
+	var table_config: TableConfig = load(
+		"res://data/table_configs/prototype_table.tres"
+	) as TableConfig
 	var hand_config: PrototypeHandConfig = load(
 		"res://data/prototype_hands/core_hand_01.tres"
 	) as PrototypeHandConfig
@@ -63,9 +75,6 @@ func _ready() -> void:
 		var seat: PlayerSeat = game.table.get_seat(seat_view.seat_index)
 		seat_view.configure(seat.seat_index, seat.display_name, seat.stack)
 
-	for chip_stack in chip_stacks:
-		chip_stack.sweep_released.connect(_on_chip_sweep_released)
-
 	game.phase_changed.connect(_on_phase_changed)
 	game.expected_deal_seat_changed.connect(_on_expected_deal_seat_changed)
 	game.betting_ready.connect(_on_betting_ready)
@@ -73,7 +82,6 @@ func _ready() -> void:
 	game.mistake_recorded.connect(_on_mistake_recorded)
 	game.hand_completed.connect(_on_hand_completed)
 
-	card_drag.swipe_released.connect(_on_card_swipe_released)
 	start_hand_button.pressed.connect(_on_start_hand_pressed)
 	advance_button.pressed.connect(_on_advance_pressed)
 
@@ -85,11 +93,103 @@ func _ready() -> void:
 	_refresh_ui()
 	hint_label.text = "Press START HAND. This scene is a gameplay test, not final UI."
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_button: InputEventMouseButton = event
+		if mouse_button.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mouse_button.pressed:
+			_begin_pointer_interaction(MOUSE_POINTER_ID, mouse_button.position)
+		elif _active_pointer_id == MOUSE_POINTER_ID:
+			_end_pointer_interaction(mouse_button.position)
+		return
+
+	if event is InputEventMouseMotion:
+		if _interaction_kind != InteractionKind.NONE and _active_pointer_id == MOUSE_POINTER_ID:
+			var mouse_motion: InputEventMouseMotion = event
+			_update_pointer_interaction(mouse_motion.position)
+		return
+
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event
+		if touch_event.pressed:
+			_begin_pointer_interaction(touch_event.index, touch_event.position)
+		elif _active_pointer_id == touch_event.index:
+			_end_pointer_interaction(touch_event.position)
+		return
+
+	if event is InputEventScreenDrag:
+		var touch_drag: InputEventScreenDrag = event
+		if (
+			_interaction_kind != InteractionKind.NONE
+			and _active_pointer_id == touch_drag.index
+		):
+			_update_pointer_interaction(touch_drag.position)
+
+func _begin_pointer_interaction(pointer_id: int, pointer_position: Vector2) -> void:
+	if _interaction_kind != InteractionKind.NONE:
+		return
+
+	if (
+		game.table.hand.phase == HandState.Phase.DEALING
+		and card_drag.visible
+		and card_drag.get_input_rect().has_point(pointer_position)
+	):
+		_interaction_kind = InteractionKind.CARD
+		_active_pointer_id = pointer_id
+		_gesture_start = pointer_position
+		card_drag.begin_preview()
+		get_viewport().set_input_as_handled()
+		return
+
+	if game.table.hand.phase == HandState.Phase.BETTING_PREFLOP:
+		for index in range(chip_stacks.size()):
+			var chip_stack: SwipeChipStack = chip_stacks[index]
+			if chip_stack.visible and chip_stack.get_input_rect().has_point(pointer_position):
+				_interaction_kind = InteractionKind.CHIP
+				_active_pointer_id = pointer_id
+				_active_chip_index = index
+				_gesture_start = pointer_position
+				chip_stack.begin_preview()
+				get_viewport().set_input_as_handled()
+				return
+
+func _update_pointer_interaction(pointer_position: Vector2) -> void:
+	var gesture_delta: Vector2 = pointer_position - _gesture_start
+
+	match _interaction_kind:
+		InteractionKind.CARD:
+			card_drag.update_preview(gesture_delta)
+		InteractionKind.CHIP:
+			if _active_chip_index >= 0 and _active_chip_index < chip_stacks.size():
+				chip_stacks[_active_chip_index].update_preview(gesture_delta)
+		_:
+			pass
+
+func _end_pointer_interaction(_pointer_position: Vector2) -> void:
+	match _interaction_kind:
+		InteractionKind.CARD:
+			card_drag.reset_preview()
+			_commit_card_action()
+		InteractionKind.CHIP:
+			if _active_chip_index >= 0 and _active_chip_index < chip_stacks.size():
+				chip_stacks[_active_chip_index].reset_preview()
+				_commit_chip_action(_active_chip_index)
+		_:
+			pass
+
+	_interaction_kind = InteractionKind.NONE
+	_active_pointer_id = MOUSE_POINTER_ID
+	_active_chip_index = -1
+	_gesture_start = Vector2.ZERO
+	get_viewport().set_input_as_handled()
+
 func _on_start_hand_pressed() -> void:
+	_cancel_pointer_interaction()
 	_clear_hand_visuals()
 	game.start_hand()
 	_arm_next_card()
-	hint_label.text = "Swipe the card. It will go to the highlighted player."
+	hint_label.text = "Tap or swipe the card to deal to the highlighted player."
 	_refresh_all_seat_views()
 	_refresh_pot()
 	_refresh_ui()
@@ -118,28 +218,16 @@ func _on_advance_pressed() -> void:
 		HandState.Phase.COMPLETE:
 			hint_label.text = "Hand complete. Start the next hand."
 
-func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> void:
+func _commit_card_action() -> void:
 	if game.table.hand.phase != HandState.Phase.DEALING:
-		card_drag.snap_home()
-		return
-
-	var swipe_delta: Vector2 = end_position - start_position
-	if swipe_delta.length() < MIN_CARD_SWIPE_DISTANCE:
-		card_drag.snap_home()
-		hint_label.text = "Give the card a short swipe."
 		return
 
 	var target_seat_index: int = game.expected_deal_seat()
 	if target_seat_index < 0:
-		card_drag.snap_home()
 		return
 
-	# Dealing order is already known by the dealer. The swipe supplies tactile
-	# intent; it should not become an aiming minigame. Any deliberate swipe
-	# sends the card to the currently highlighted seat.
 	var dealt: bool = game.try_deal_card_to_seat(target_seat_index)
 	if not dealt:
-		card_drag.snap_home()
 		_refresh_ui()
 		return
 
@@ -147,13 +235,34 @@ func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> 
 	var dealt_card_id: String = String(seat.hole_cards.back())
 	var flight_start: Vector2 = card_drag.global_position
 
-	card_drag.snap_home()
+	card_drag.reset_preview()
 	_arm_next_card()
 	_animate_dealt_card_to_zone(target_seat_index, dealt_card_id, flight_start)
 
 	if game.table.hand.phase == HandState.Phase.DEALING:
-		hint_label.text = "Good. Swipe the next card."
+		hint_label.text = "Good. Tap or swipe the next card."
 
+	_refresh_ui()
+
+func _commit_chip_action(seat_index: int) -> void:
+	if game.table.hand.phase != HandState.Phase.BETTING_PREFLOP:
+		return
+
+	if seat_index < 0 or seat_index >= chip_stacks.size():
+		return
+
+	var chip_stack: SwipeChipStack = chip_stacks[seat_index]
+	var seat: PlayerSeat = game.table.get_seat(seat_index)
+	var amount: int = seat.current_bet
+	var flight_start: Vector2 = chip_stack.global_position
+
+	if not game.try_collect_bet_from_seat(seat_index):
+		return
+
+	chip_stack.disarm()
+	_animate_chip_to_pot(amount, flight_start)
+	_refresh_all_seat_views()
+	_refresh_pot()
 	_refresh_ui()
 
 func _on_betting_ready() -> void:
@@ -164,40 +273,7 @@ func _on_betting_ready() -> void:
 		var seat: PlayerSeat = game.table.get_seat(seat_index)
 		chip_stacks[seat_index].arm(seat.current_bet)
 
-	hint_label.text = "Bets are in. Sweep each betting stack to collect it."
-	_refresh_ui()
-
-func _on_chip_sweep_released(
-	seat_index: int,
-	start_position: Vector2,
-	end_position: Vector2
-) -> void:
-	if game.table.hand.phase != HandState.Phase.BETTING_PREFLOP:
-		return
-
-	var chip_stack: SwipeChipStack = chip_stacks[seat_index]
-	var sweep_delta: Vector2 = end_position - start_position
-
-	if sweep_delta.length() < MIN_CHIP_SWEEP_DISTANCE:
-		chip_stack.snap_home()
-		hint_label.text = "Give that betting stack a short sweep."
-		return
-
-	# A betting stack only has one valid dealer destination: the pot. Requiring
-	# precise aiming would make dexterity the challenge, which is not the game.
-	# Any deliberate sweep on the correct stack collects it into the pot.
-	var seat: PlayerSeat = game.table.get_seat(seat_index)
-	var amount: int = seat.current_bet
-	var flight_start: Vector2 = chip_stack.global_position
-
-	if not game.try_collect_bet_from_seat(seat_index):
-		chip_stack.snap_home()
-		return
-
-	chip_stack.disarm()
-	_animate_chip_to_pot(amount, flight_start)
-	_refresh_all_seat_views()
-	_refresh_pot()
+	hint_label.text = "Bets are in. Tap or sweep each betting stack to collect it."
 	_refresh_ui()
 
 func _on_bet_collected(_seat_index: int, _amount: int, pot_total: int) -> void:
@@ -335,6 +411,21 @@ func _arm_next_card() -> void:
 	else:
 		card_drag.disarm()
 
+func _cancel_pointer_interaction() -> void:
+	if _interaction_kind == InteractionKind.CARD:
+		card_drag.reset_preview()
+	elif (
+		_interaction_kind == InteractionKind.CHIP
+		and _active_chip_index >= 0
+		and _active_chip_index < chip_stacks.size()
+	):
+		chip_stacks[_active_chip_index].reset_preview()
+
+	_interaction_kind = InteractionKind.NONE
+	_active_pointer_id = MOUSE_POINTER_ID
+	_active_chip_index = -1
+	_gesture_start = Vector2.ZERO
+
 func _clear_hand_visuals() -> void:
 	for seat_view in seat_views:
 		seat_view.clear_cards()
@@ -417,3 +508,15 @@ func _refresh_ui() -> void:
 		_on_expected_deal_seat_changed(game.expected_deal_seat())
 	elif phase != HandState.Phase.IDLE:
 		_on_expected_deal_seat_changed(-1)
+
+# Compatibility helpers used by automated tests. They deliberately bypass
+# pointer routing; real input routing is covered separately by a viewport-input test.
+func _on_card_swipe_released(_start_position: Vector2, _end_position: Vector2) -> void:
+	_commit_card_action()
+
+func _on_chip_sweep_released(
+	seat_index: int,
+	_start_position: Vector2,
+	_end_position: Vector2
+) -> void:
+	_commit_chip_action(seat_index)
