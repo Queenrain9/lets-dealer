@@ -1,6 +1,6 @@
 extends Control
 
-const BUILD_ID: String = "live-shift-stage2-v0.4"
+const BUILD_ID: String = "table-first-stage4-v0.5"
 
 const BG: Color = Color("0d1218")
 const PANEL: Color = Color("171e27")
@@ -34,17 +34,6 @@ const BET_POSITIONS: Array[Vector2] = [
 	Vector2(425, 412),
 	Vector2(284, 484),
 ]
-const ACTION_ORDER: Array[String] = ["deal", "pot", "board", "chip_change", "payout", "floor"]
-const ACTION_LABELS: Dictionary = {
-	"deal": "DEAL",
-	"pot": "POT",
-	"board": "BOARD",
-	"chip_change": "CHANGE",
-	"payout": "PAYOUT",
-	"floor": "FLOOR",
-}
-const STREET_ORDER: Array[String] = ["preflop", "flop", "turn", "river"]
-
 var hands: Array[Dictionary] = []
 var roster: Array[NPCProfile] = []
 var shift_seed: int = 1
@@ -84,9 +73,13 @@ var headline_label: Label
 var event_label: Label
 var pressure_label: Label
 var feedback_label: Label
-var tool_mode_label: Label
 
 var table: Panel
+var board_panel: Panel
+var deck_panel: Panel
+var dealer_rail: Panel
+var context_label: Label
+var floor_button: Button
 var pot_panel: Panel
 var main_pot_label: Label
 var side_pot_label: Label
@@ -106,7 +99,6 @@ var board_panels: Array[Panel] = []
 var board_labels: Array[Label] = []
 var seat_hit_buttons: Array[Button] = []
 
-var action_buttons: Dictionary = {}
 var history_labels: Array[Label] = []
 
 
@@ -270,11 +262,11 @@ func _build_home() -> void:
 	info.add_child(ititle)
 
 	var lines: Array[String] = [
-		"3 HAND가 한 근무 안에서 자동으로 이어짐",
-		"NPC 액션이 실시간으로 진행됨",
-		"칩 교환 요청과 베팅 정리가 겹칠 수 있음",
-		"늦으면 손님이 재촉하고 FLOW가 끊김",
-		"정답 버튼이 아니라 DEALER TOOLS로 직접 운영",
+		"DECK을 탭하면 딜 또는 다음 스트리트 진행",
+		"베팅 종료 후 중앙 POT을 탭하면 칩 자동 정리",
+		"손님 요청은 해당 좌석이나 요청 버블을 직접 탭",
+		"SHOWDOWN은 POT 탭 → 승자 좌석 탭",
+		"FLOOR는 테이블이 꼬일 때만 나타남",
 	]
 	for i in range(lines.size()):
 		var item := Label.new()
@@ -295,7 +287,7 @@ func _build_game() -> void:
 
 	_build_table_status()
 	_build_table()
-	_build_tool_panel()
+	_build_dealer_rail()
 	_build_history_panel()
 
 
@@ -424,19 +416,20 @@ func _create_seat(index: int) -> void:
 
 
 func _create_board() -> void:
-	var board_bg := Panel.new()
-	board_bg.position = Vector2(166, 258)
-	board_bg.size = Vector2(320, 104)
-	board_bg.add_theme_stylebox_override("panel", _style(FELT_2, Color("346859"), 1, 18))
-	table.add_child(board_bg)
+	board_panel = Panel.new()
+	board_panel.position = Vector2(166, 258)
+	board_panel.size = Vector2(320, 104)
+	board_panel.add_theme_stylebox_override("panel", _style(FELT_2, Color("346859"), 1, 18))
+	table.add_child(board_panel)
 
 	for i in range(5):
 		var card := Panel.new()
 		card.position = Vector2(15 + i * 61, 18)
 		card.size = Vector2(50, 70)
 		card.visible = false
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_theme_stylebox_override("panel", _style(Color("f1eee5"), Color("c8ac70"), 2, 7))
-		board_bg.add_child(card)
+		board_panel.add_child(card)
 		board_panels.append(card)
 
 		var label := Label.new()
@@ -450,6 +443,15 @@ func _create_board() -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(label)
 		board_labels.append(label)
+
+	var board_hit := Button.new()
+	board_hit.position = Vector2.ZERO
+	board_hit.size = board_panel.size
+	board_hit.flat = true
+	board_hit.focus_mode = Control.FOCUS_NONE
+	board_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	board_hit.pressed.connect(_on_board_pressed)
+	board_panel.add_child(board_hit)
 
 
 func _create_pots() -> void:
@@ -467,6 +469,7 @@ func _create_pots() -> void:
 	main_pot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	main_pot_label.add_theme_color_override("font_color", ACCENT)
 	main_pot_label.add_theme_font_size_override("font_size", 16)
+	main_pot_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pot_panel.add_child(main_pot_label)
 
 	side_pot_label = Label.new()
@@ -476,7 +479,17 @@ func _create_pots() -> void:
 	side_pot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	side_pot_label.add_theme_color_override("font_color", TEXT)
 	side_pot_label.add_theme_font_size_override("font_size", 14)
+	side_pot_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pot_panel.add_child(side_pot_label)
+
+	var pot_hit := Button.new()
+	pot_hit.position = Vector2.ZERO
+	pot_hit.size = pot_panel.size
+	pot_hit.flat = true
+	pot_hit.focus_mode = Control.FOCUS_NONE
+	pot_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	pot_hit.pressed.connect(_on_pot_pressed)
+	pot_panel.add_child(pot_hit)
 
 
 func _create_request_panel() -> void:
@@ -496,7 +509,17 @@ func _create_request_panel() -> void:
 	request_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	request_label.add_theme_font_size_override("font_size", 11)
 	request_label.add_theme_color_override("font_color", TEXT)
+	request_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	request_panel.add_child(request_label)
+
+	var request_hit := Button.new()
+	request_hit.position = Vector2.ZERO
+	request_hit.size = request_panel.size
+	request_hit.flat = true
+	request_hit.focus_mode = Control.FOCUS_NONE
+	request_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	request_hit.pressed.connect(_on_request_pressed)
+	request_panel.add_child(request_hit)
 
 
 func _create_showdown_panel() -> void:
@@ -539,43 +562,76 @@ func _create_bets() -> void:
 		bet_labels.append(label)
 
 
-func _build_tool_panel() -> void:
-	var panel := Panel.new()
-	panel.position = Vector2(24, 780)
-	panel.size = Vector2(672, 250)
-	panel.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 18))
-	game_layer.add_child(panel)
+func _build_dealer_rail() -> void:
+	dealer_rail = Panel.new()
+	dealer_rail.position = Vector2(34, 778)
+	dealer_rail.size = Vector2(652, 112)
+	dealer_rail.add_theme_stylebox_override("panel", _style(Color("121920"), Color("604d32"), 2, 18))
+	game_layer.add_child(dealer_rail)
 
-	tool_mode_label = Label.new()
-	tool_mode_label.position = Vector2(18, 10)
-	tool_mode_label.size = Vector2(636, 24)
-	tool_mode_label.text = "DEALER TOOLS"
-	tool_mode_label.add_theme_font_size_override("font_size", 13)
-	tool_mode_label.add_theme_color_override("font_color", MUTED)
-	panel.add_child(tool_mode_label)
+	var rail_title := Label.new()
+	rail_title.position = Vector2(18, 10)
+	rail_title.size = Vector2(150, 20)
+	rail_title.text = "DEALER RAIL"
+	rail_title.add_theme_font_size_override("font_size", 11)
+	rail_title.add_theme_color_override("font_color", MUTED)
+	rail_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dealer_rail.add_child(rail_title)
 
-	for i in range(ACTION_ORDER.size()):
-		var action_id: String = ACTION_ORDER[i]
-		var button := Button.new()
-		var col: int = i % 3
-		var row: int = int(i / 3)
-		button.position = Vector2(18 + col * 211, 48 + row * 86)
-		button.size = Vector2(194, 70)
-		button.text = String(ACTION_LABELS[action_id])
-		button.add_theme_font_size_override("font_size", 16)
-		button.add_theme_stylebox_override("normal", _style(PANEL_2, LINE, 1, 13))
-		button.add_theme_stylebox_override("hover", _style(Color("283446"), ACCENT, 1, 13))
-		button.add_theme_stylebox_override("pressed", _style(Color("33270f"), ACCENT, 2, 13))
-		button.add_theme_color_override("font_color", TEXT)
-		button.pressed.connect(_on_action_pressed.bind(action_id))
-		panel.add_child(button)
-		action_buttons[action_id] = button
+	deck_panel = Panel.new()
+	deck_panel.position = Vector2(268, 18)
+	deck_panel.size = Vector2(116, 76)
+	deck_panel.pivot_offset = deck_panel.size * 0.5
+	deck_panel.add_theme_stylebox_override("panel", _style(Color("e8e3d8"), Color("c8ac70"), 2, 9))
+	dealer_rail.add_child(deck_panel)
+
+	var deck_label := Label.new()
+	deck_label.position = Vector2.ZERO
+	deck_label.size = deck_panel.size
+	deck_label.text = "DECK"
+	deck_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	deck_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	deck_label.add_theme_font_size_override("font_size", 15)
+	deck_label.add_theme_color_override("font_color", Color("171b20"))
+	deck_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	deck_panel.add_child(deck_label)
+
+	var deck_hit := Button.new()
+	deck_hit.position = Vector2.ZERO
+	deck_hit.size = deck_panel.size
+	deck_hit.flat = true
+	deck_hit.focus_mode = Control.FOCUS_NONE
+	deck_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	deck_hit.pressed.connect(_on_deck_pressed)
+	deck_panel.add_child(deck_hit)
+
+	context_label = Label.new()
+	context_label.position = Vector2(18, 39)
+	context_label.size = Vector2(224, 50)
+	context_label.text = "TABLE LIVE"
+	context_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	context_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	context_label.add_theme_font_size_override("font_size", 12)
+	context_label.add_theme_color_override("font_color", MUTED)
+	context_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dealer_rail.add_child(context_label)
+
+	floor_button = Button.new()
+	floor_button.position = Vector2(500, 30)
+	floor_button.size = Vector2(132, 54)
+	floor_button.text = "CALL FLOOR"
+	floor_button.visible = false
+	floor_button.add_theme_font_size_override("font_size", 12)
+	floor_button.add_theme_stylebox_override("normal", _style(Color("202936"), BAD, 1, 12))
+	floor_button.add_theme_color_override("font_color", BAD)
+	floor_button.pressed.connect(_use_floor_assist)
+	dealer_rail.add_child(floor_button)
 
 
 func _build_history_panel() -> void:
 	var panel := Panel.new()
-	panel.position = Vector2(24, 1046)
-	panel.size = Vector2(672, 112)
+	panel.position = Vector2(24, 908)
+	panel.size = Vector2(672, 250)
 	panel.add_theme_stylebox_override("panel", _style(Color("111820"), LINE, 1, 15))
 	game_layer.add_child(panel)
 
@@ -589,10 +645,10 @@ func _build_history_panel() -> void:
 
 	for i in range(3):
 		var line := Label.new()
-		line.position = Vector2(14, 31 + i * 24)
-		line.size = Vector2(644, 22)
+		line.position = Vector2(14, 46 + i * 48)
+		line.size = Vector2(644, 38)
 		line.text = "—"
-		line.add_theme_font_size_override("font_size", 11)
+		line.add_theme_font_size_override("font_size", 12)
 		line.add_theme_color_override("font_color", MUTED)
 		panel.add_child(line)
 		history_labels.append(line)
@@ -689,6 +745,10 @@ func _show_home() -> void:
 	flow_label.text = "FLOW x0"
 	timer_label.text = "READY"
 	timer_label.add_theme_color_override("font_color", GOOD)
+	if floor_button != null:
+		floor_button.visible = false
+	if context_label != null:
+		context_label.text = "TABLE LIVE"
 
 
 func _start_shift() -> void:
@@ -736,7 +796,6 @@ func _start_hand() -> void:
 	phase_label.text = String(hand.get("label", "HAND"))
 	headline_label.text = "NEW HAND · 셔플과 컷 완료"
 	event_label.text = "플레이어들이 딜을 기다리고 있습니다."
-	tool_mode_label.text = "DEALER TOOLS"
 	showdown_panel.visible = false
 	request_panel.visible = false
 	main_pot_label.text = "MAIN POT  0"
@@ -767,6 +826,7 @@ func _start_hand() -> void:
 	_append_history("— %s START" % String(hand.get("label", "HAND")), INFO)
 	_refresh_hud()
 	_refresh_pressure()
+	context_label.text = "DECK · 새 핸드 시작"
 
 
 func _schedule_betting_round(street: String) -> void:
@@ -783,6 +843,7 @@ func _schedule_betting_round(street: String) -> void:
 	betting_running = true
 	headline_label.text = "%s · PLAYER ACTION" % street.to_upper()
 	event_label.text = "플레이어 액션이 진행 중입니다."
+	context_label.text = "TABLE LIVE · 액션 관찰"
 
 	var raw_events: Variant = round_data.get("events", [])
 	var last_time: float = 0.0
@@ -879,6 +940,7 @@ func _on_betting_closed(street: String) -> void:
 
 	headline_label.text = "%s · ACTION CLOSED" % street.to_upper()
 	event_label.text = "테이블 위 베팅칩은 그대로 남아 있습니다."
+	context_label.text = "테이블 위 칩을 보고 POT을 처리"
 	_enqueue_duty(DealerTask.new({
 		"id": "collect_%s_%d" % [street, hand_index],
 		"phase": street.to_upper(),
@@ -899,6 +961,7 @@ func _enqueue_board_duty(next_street: String) -> void:
 	var label: String = next_street.to_upper()
 	headline_label.text = "%s · TABLE READY" % label
 	event_label.text = "다음 스트리트를 진행할 수 있습니다."
+	context_label.text = "DECK 또는 BOARD로 다음 스트리트"
 	_enqueue_duty(DealerTask.new({
 		"id": "board_%s_%d" % [next_street, hand_index],
 		"phase": label,
@@ -918,6 +981,7 @@ func _enqueue_showdown() -> void:
 	showdown_label.text = String(showdown.get("text", "SHOWDOWN"))
 	headline_label.text = "SHOWDOWN"
 	event_label.text = "핸드가 공개되었습니다. 팟을 정산하세요."
+	context_label.text = "POT을 탭해서 지급 시작"
 	var payouts: Array = showdown.get("payouts", []) as Array
 	if payouts.is_empty():
 		_finish_hand()
@@ -1001,32 +1065,69 @@ func _age_pending_duties(delta: float) -> void:
 			_refresh_hud()
 			_refresh_pressure()
 
+	_refresh_floor_affordance()
 
-func _on_action_pressed(action_id: String) -> void:
+
+func _on_deck_pressed() -> void:
+	if not session_active or resolving:
+		return
+	if payout_targeting:
+		_register_invalid_action("deck")
+		return
+
+	var deal_duty: DealerTask = _find_pending_duty("deal")
+	if deal_duty != null:
+		_resolve_duty(deal_duty)
+		return
+
+	var board_duty: DealerTask = _find_pending_duty("board")
+	if board_duty != null:
+		_resolve_duty(board_duty)
+		return
+
+	_register_invalid_action("deck")
+
+
+func _on_board_pressed() -> void:
+	if not session_active or resolving:
+		return
+	if payout_targeting:
+		_register_invalid_action("board")
+		return
+
+	var duty: DealerTask = _find_pending_duty("board")
+	if duty != null:
+		_resolve_duty(duty)
+	else:
+		_register_invalid_action("board")
+
+
+func _on_pot_pressed() -> void:
 	if not session_active or resolving:
 		return
 
 	if payout_targeting:
-		if action_id == "floor":
-			_use_floor_assist()
-		elif action_id == "payout":
-			_cancel_payout_targeting()
-		else:
-			_register_invalid_action(action_id)
+		_cancel_payout_targeting()
 		return
 
-	if action_id == "floor":
-		_use_floor_assist()
+	var collect_duty: DealerTask = _find_pending_duty("pot")
+	if collect_duty != null:
+		_resolve_duty(collect_duty)
 		return
 
-	var duty: DealerTask = _find_pending_duty(action_id)
-	if duty == null:
-		_register_invalid_action(action_id)
+	var payout_duty: DealerTask = _find_pending_duty("payout")
+	if payout_duty != null:
+		_begin_payout_targeting(payout_duty)
 		return
 
-	if action_id == "payout":
-		_begin_payout_targeting(duty)
-	else:
+	_register_invalid_action("pot")
+
+
+func _on_request_pressed() -> void:
+	if not session_active or resolving or payout_targeting:
+		return
+	var duty: DealerTask = _find_pending_duty("chip_change")
+	if duty != null:
 		_resolve_duty(duty)
 
 
@@ -1043,7 +1144,7 @@ func _find_pending_duty(action_id: String) -> DealerTask:
 func _begin_payout_targeting(duty: DealerTask) -> void:
 	active_payout_duty = duty
 	payout_targeting = true
-	tool_mode_label.text = "PAYOUT · 지급할 좌석 선택"
+	context_label.text = "POT 선택됨 · 지급할 승자 좌석을 탭"
 	_show_feedback("PAYOUT MODE", INFO)
 	_apply_payout_eligibility(duty)
 
@@ -1051,26 +1152,36 @@ func _begin_payout_targeting(duty: DealerTask) -> void:
 func _cancel_payout_targeting() -> void:
 	payout_targeting = false
 	active_payout_duty = null
-	tool_mode_label.text = "DEALER TOOLS"
+	context_label.text = "TABLE LIVE"
 	_reset_seat_styles()
 
 
 func _on_seat_pressed(seat_index: int) -> void:
-	if not session_active or resolving or not payout_targeting or active_payout_duty == null:
+	if not session_active or resolving:
 		return
 
-	if seat_index == active_payout_duty.target_seat:
-		var duty: DealerTask = active_payout_duty
-		payout_targeting = false
-		active_payout_duty = null
-		tool_mode_label.text = "DEALER TOOLS"
-		_resolve_duty(duty)
-	else:
-		mistakes += 1
-		flow_combo = 0
-		_show_feedback("잘못된 지급 대상", BAD)
-		_append_history("× PAYOUT TARGET ERROR", BAD)
-		_refresh_hud()
+	if payout_targeting and active_payout_duty != null:
+		if seat_index == active_payout_duty.target_seat:
+			var payout_duty: DealerTask = active_payout_duty
+			payout_targeting = false
+			active_payout_duty = null
+			context_label.text = "TABLE LIVE"
+			_resolve_duty(payout_duty)
+		else:
+			mistakes += 1
+			flow_combo = 0
+			_show_feedback("잘못된 지급 대상", BAD)
+			_append_history("× PAYOUT TARGET ERROR", BAD)
+			_refresh_hud()
+		return
+
+	for duty in pending_duties:
+		if duty.expected_action == "chip_change" and duty.source_seat == seat_index:
+			_resolve_duty(duty)
+			return
+
+	if seat_index >= 0 and seat_index < roster.size():
+		_show_feedback("%s · %s" % [roster[seat_index].display_name, roster[seat_index].trait_label], INFO)
 
 
 func _resolve_duty(duty: DealerTask) -> void:
@@ -1121,6 +1232,7 @@ func _after_duty_resolved(duty: DealerTask) -> void:
 		"chip_change":
 			if duty.source_seat >= 0 and duty.source_seat < seat_state_labels.size():
 				seat_state_labels[duty.source_seat].text = "ACTIVE"
+			context_label.text = "TABLE LIVE"
 		"payout":
 			_after_payout(duty)
 
@@ -1204,20 +1316,20 @@ func _play_duty_feedback(duty: DealerTask) -> void:
 			await get_tree().create_timer(0.28).timeout
 
 
-func _register_invalid_action(action_id: String) -> void:
+func _register_invalid_action(area_id: String) -> void:
 	mistakes += 1
 	flow_combo = 0
-	var message: String = "지금은 그 업무가 필요하지 않습니다"
-	if action_id == "board" and _find_pending_duty("pot") != null:
+	var message: String = "지금 처리할 것이 없습니다"
+	if area_id == "board" and _find_pending_duty("pot") != null:
 		message = "베팅칩이 아직 테이블에 있습니다"
-	elif action_id == "pot" and not _visible_bets_exist():
-		message = "회수할 베팅칩이 없습니다"
-	elif action_id == "chip_change" and _find_pending_duty("chip_change") == null:
-		message = "칩 교환 요청이 없습니다"
-	elif action_id == "payout":
-		message = "아직 정산할 팟이 없습니다"
-	elif action_id == "deal":
-		message = "현재 핸드가 진행 중입니다"
+	elif area_id == "board":
+		message = "아직 다음 보드를 열 차례가 아닙니다"
+	elif area_id == "pot" and not _visible_bets_exist():
+		message = "지금 POT에서 처리할 것이 없습니다"
+	elif area_id == "deck" and betting_running:
+		message = "플레이어 액션이 아직 진행 중입니다"
+	elif area_id == "deck":
+		message = "지금은 DECK을 건드릴 차례가 아닙니다"
 	_show_feedback(message, BAD)
 	_append_history("× %s" % message, BAD)
 	_refresh_hud()
@@ -1303,6 +1415,19 @@ func _refresh_pressure() -> void:
 	else:
 		pressure_label.text = "PRESSURE %d" % total
 		pressure_label.add_theme_color_override("font_color", BAD)
+
+	_refresh_floor_affordance()
+
+
+func _refresh_floor_affordance() -> void:
+	if floor_button == null:
+		return
+	var urgent: bool = pending_duties.size() >= 2
+	for duty in pending_duties:
+		if duty.warned or bool(duty.state.get("overdue_penalized", false)):
+			urgent = true
+			break
+	floor_button.visible = session_active and urgent
 
 
 func _visible_bets_exist() -> bool:
