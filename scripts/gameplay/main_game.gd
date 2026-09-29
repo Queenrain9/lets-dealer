@@ -19,36 +19,36 @@ const PURPLE: Color = Color("a77fe8")
 const PLAYER_NAMES: Array[String] = ["지민", "맥스", "소연", "토니", "김사장", "찰리"]
 const PLAYER_STACKS: Array[int] = [12500, 8900, 4300, 9600, 6800, 3200]
 const SEAT_POSITIONS: Array[Vector2] = [
-	Vector2(22, 390),
-	Vector2(74, 174),
-	Vector2(250, 112),
-	Vector2(426, 174),
-	Vector2(478, 390),
-	Vector2(250, 510),
+	Vector2(22, 392),
+	Vector2(38, 182),
+	Vector2(174, 74),
+	Vector2(344, 74),
+	Vector2(480, 182),
+	Vector2(496, 392),
 ]
 const BET_POSITIONS: Array[Vector2] = [
-	Vector2(142, 412),
-	Vector2(175, 286),
-	Vector2(284, 250),
-	Vector2(392, 286),
-	Vector2(425, 412),
-	Vector2(284, 484),
+	Vector2(150, 420),
+	Vector2(168, 294),
+	Vector2(246, 232),
+	Vector2(344, 232),
+	Vector2(420, 294),
+	Vector2(438, 420),
 ]
 const REQUEST_POSITIONS: Array[Vector2] = [
-	Vector2(24, 308),
-	Vector2(36, 92),
-	Vector2(234, 22),
-	Vector2(432, 92),
-	Vector2(444, 308),
-	Vector2(234, 538),
+	Vector2(30, 322),
+	Vector2(42, 116),
+	Vector2(182, 18),
+	Vector2(350, 18),
+	Vector2(456, 116),
+	Vector2(462, 322),
 ]
 const SPEECH_POSITIONS: Array[Vector2] = [
-	Vector2(30, 500),
-	Vector2(40, 112),
-	Vector2(248, 54),
-	Vector2(430, 112),
-	Vector2(448, 500),
-	Vector2(248, 604),
+	Vector2(26, 500),
+	Vector2(30, 108),
+	Vector2(176, 28),
+	Vector2(340, 28),
+	Vector2(466, 108),
+	Vector2(468, 500),
 ]
 var hands: Array[Dictionary] = []
 var roster: Array[NPCProfile] = []
@@ -95,8 +95,13 @@ var feedback_label: Label
 
 var table: Panel
 var board_panel: Panel
+var burn_panel: Panel
+var burn_label: Label
 var deck_panel: Panel
 var dealer_rail: Panel
+var dealer_hand_left: Panel
+var dealer_hand_right: Panel
+var local_feedback_label: Label
 var context_label: Label
 var floor_button: Button
 var pot_panel: Panel
@@ -378,7 +383,7 @@ func _build_game() -> void:
 func _build_table_status() -> void:
 	var status := Panel.new()
 	status.position = Vector2(24, 10)
-	status.size = Vector2(672, 72)
+	status.size = Vector2(672, 58)
 	status.add_theme_stylebox_override("panel", _style(PANEL, INFO, 2, 17))
 	game_layer.add_child(status)
 
@@ -401,8 +406,8 @@ func _build_table_status() -> void:
 	status.add_child(pressure_label)
 
 	headline_label = Label.new()
-	headline_label.position = Vector2(18, 34)
-	headline_label.size = Vector2(636, 28)
+	headline_label.position = Vector2(188, 16)
+	headline_label.size = Vector2(444, 28)
 	headline_label.text = ""
 	headline_label.add_theme_font_size_override("font_size", 17)
 	headline_label.add_theme_color_override("font_color", TEXT)
@@ -418,9 +423,9 @@ func _build_table_status() -> void:
 
 func _build_table() -> void:
 	table = Panel.new()
-	table.position = Vector2(34, 98)
-	table.size = Vector2(652, 664)
-	table.add_theme_stylebox_override("panel", _style(FELT, Color("755b32"), 6, 54))
+	table.position = Vector2(24, 78)
+	table.size = Vector2(672, 844)
+	table.add_theme_stylebox_override("panel", _style(FELT, Color("755b32"), 6, 96))
 	game_layer.add_child(table)
 
 	for i in range(6):
@@ -432,12 +437,13 @@ func _build_table() -> void:
 	_create_showdown_panel()
 	_create_bets()
 	_create_speech_bubbles()
+	_create_local_feedback()
 
 
 func _create_seat(index: int) -> void:
 	var seat := Panel.new()
 	seat.position = SEAT_POSITIONS[index]
-	seat.size = Vector2(154, 104)
+	seat.size = Vector2(154, 98)
 	seat.add_theme_stylebox_override("panel", _style(PANEL, LINE, 2, 14))
 	table.add_child(seat)
 	seat_panels.append(seat)
@@ -490,7 +496,7 @@ func _create_seat(index: int) -> void:
 
 func _create_board() -> void:
 	board_panel = Panel.new()
-	board_panel.position = Vector2(166, 258)
+	board_panel.position = Vector2(176, 330)
 	board_panel.size = Vector2(320, 104)
 	board_panel.add_theme_stylebox_override("panel", _style(FELT_2, Color("346859"), 1, 18))
 	table.add_child(board_panel)
@@ -526,10 +532,28 @@ func _create_board() -> void:
 	board_hit.pressed.connect(_on_board_pressed)
 	board_panel.add_child(board_hit)
 
+	burn_panel = Panel.new()
+	burn_panel.position = Vector2(116, 500)
+	burn_panel.size = Vector2(104, 62)
+	burn_panel.visible = false
+	burn_panel.add_theme_stylebox_override("panel", _style(Color("171e27"), LINE, 1, 12))
+	table.add_child(burn_panel)
+
+	burn_label = Label.new()
+	burn_label.position = Vector2.ZERO
+	burn_label.size = burn_panel.size
+	burn_label.text = "BURN"
+	burn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	burn_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	burn_label.add_theme_font_size_override("font_size", 12)
+	burn_label.add_theme_color_override("font_color", MUTED)
+	burn_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	burn_panel.add_child(burn_label)
+
 
 func _create_pots() -> void:
 	pot_panel = Panel.new()
-	pot_panel.position = Vector2(218, 384)
+	pot_panel.position = Vector2(228, 470)
 	pot_panel.size = Vector2(216, 92)
 	pot_panel.pivot_offset = pot_panel.size * 0.5
 	pot_panel.add_theme_stylebox_override("panel", _style(Color("1d2630"), ACCENT, 2, 24))
@@ -597,7 +621,7 @@ func _create_request_panel() -> void:
 
 func _create_showdown_panel() -> void:
 	showdown_panel = Panel.new()
-	showdown_panel.position = Vector2(18, 500)
+	showdown_panel.position = Vector2(226, 586)
 	showdown_panel.size = Vector2(220, 94)
 	showdown_panel.visible = false
 	showdown_panel.add_theme_stylebox_override("panel", _style(Color("151e27"), LINE, 1, 13))
@@ -637,6 +661,21 @@ func _create_bets() -> void:
 
 
 
+
+func _create_local_feedback() -> void:
+	local_feedback_label = Label.new()
+	local_feedback_label.size = Vector2(180, 42)
+	local_feedback_label.visible = false
+	local_feedback_label.z_index = 40
+	local_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	local_feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	local_feedback_label.add_theme_font_size_override("font_size", 11)
+	local_feedback_label.add_theme_stylebox_override("normal", _style(Color("10161de8"), LINE, 1, 11))
+	local_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	table.add_child(local_feedback_label)
+
+
+
 func _create_speech_bubbles() -> void:
 	for i in range(6):
 		var bubble := Panel.new()
@@ -667,14 +706,28 @@ func _create_speech_bubbles() -> void:
 
 func _build_dealer_rail() -> void:
 	dealer_rail = Panel.new()
-	dealer_rail.position = Vector2(34, 774)
-	dealer_rail.size = Vector2(652, 92)
-	dealer_rail.add_theme_stylebox_override("panel", _style(Color("121920"), Color("604d32"), 2, 18))
+	dealer_rail.position = Vector2(24, 776)
+	dealer_rail.size = Vector2(672, 184)
+	dealer_rail.add_theme_stylebox_override("panel", _style(Color("111820d8"), Color("604d32"), 2, 52))
 	game_layer.add_child(dealer_rail)
 
+	dealer_hand_left = Panel.new()
+	dealer_hand_left.position = Vector2(188, 64)
+	dealer_hand_left.size = Vector2(76, 76)
+	dealer_hand_left.add_theme_stylebox_override("panel", _style(Color("cabaa8"), Color("8f7c67"), 1, 38))
+	dealer_hand_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dealer_rail.add_child(dealer_hand_left)
+
+	dealer_hand_right = Panel.new()
+	dealer_hand_right.position = Vector2(408, 64)
+	dealer_hand_right.size = Vector2(76, 76)
+	dealer_hand_right.add_theme_stylebox_override("panel", _style(Color("cabaa8"), Color("8f7c67"), 1, 38))
+	dealer_hand_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dealer_rail.add_child(dealer_hand_right)
+
 	deck_panel = Panel.new()
-	deck_panel.position = Vector2(268, 8)
-	deck_panel.size = Vector2(116, 76)
+	deck_panel.position = Vector2(278, 40)
+	deck_panel.size = Vector2(116, 82)
 	deck_panel.pivot_offset = deck_panel.size * 0.5
 	deck_panel.add_theme_stylebox_override("panel", _style(Color("e8e3d8"), Color("c8ac70"), 2, 9))
 	dealer_rail.add_child(deck_panel)
@@ -707,8 +760,8 @@ func _build_dealer_rail() -> void:
 	dealer_rail.add_child(context_label)
 
 	floor_button = Button.new()
-	floor_button.position = Vector2(504, 19)
-	floor_button.size = Vector2(128, 54)
+	floor_button.position = Vector2(514, 106)
+	floor_button.size = Vector2(128, 50)
 	floor_button.text = "FLOOR"
 	floor_button.visible = false
 	floor_button.add_theme_font_size_override("font_size", 12)
@@ -954,6 +1007,62 @@ func _build_career() -> void:
 	career_layer.add_child(back)
 
 
+
+func _show_career() -> void:
+	session_active = false
+	resolving = false
+	betting_running = false
+	payout_targeting = false
+	pending_duties.clear()
+	scheduled_events.clear()
+	home_layer.visible = false
+	game_layer.visible = false
+	complete_layer.visible = false
+	career_layer.visible = true
+	top_bar.visible = false
+
+
+func _set_top_bar_mode(mode: String) -> void:
+	top_bar.visible = mode != "hidden"
+	if mode == "home":
+		brand_label.text = "LET'S DEALER"
+		level_label.text = "LV.1 · 신뢰받는 딜러 · EXP 420 / 1,000"
+		cash_label.visible = true
+		rep_label.visible = true
+		cash_label.text = "TIP  %s" % _format_amount(cash)
+		rep_label.text = "REP  120"
+		accuracy_label.visible = false
+		flow_label.visible = false
+		timer_label.visible = false
+	elif mode == "game":
+		brand_label.text = "LV.1  DEALER"
+		level_label.text = "RIVER PUB · EVENING SHIFT"
+		cash_label.visible = true
+		cash_label.text = "TASK  DEAL"
+		rep_label.visible = false
+		accuracy_label.visible = true
+		flow_label.visible = true
+		timer_label.visible = true
+	else:
+		top_bar.visible = false
+
+
+func _wireframe_task_name(action_id: String) -> String:
+	match action_id:
+		"deal":
+			return "DEAL"
+		"pot":
+			return "COLLECT"
+		"board":
+			return "BOARD"
+		"chip_change":
+			return "SERVICE"
+		"payout":
+			return "PAYOUT"
+	return "TABLE"
+
+
+
 func _build_feedback() -> void:
 	feedback_label = Label.new()
 	feedback_label.position = Vector2(180, 498)
@@ -977,6 +1086,8 @@ func _show_home() -> void:
 	home_layer.visible = true
 	game_layer.visible = false
 	complete_layer.visible = false
+	career_layer.visible = false
+	_set_top_bar_mode("home")
 	level_label.text = "LV.1  신입 딜러"
 	cash_label.text = "TIP  %s" % _format_amount(cash)
 	rep_label.text = "REP  120"
@@ -1018,6 +1129,8 @@ func _start_shift() -> void:
 	home_layer.visible = false
 	game_layer.visible = true
 	complete_layer.visible = false
+	career_layer.visible = false
+	_set_top_bar_mode("game")
 	for label in history_labels:
 		label.text = "—"
 
@@ -1043,8 +1156,12 @@ func _start_hand() -> void:
 	event_label.text = ""
 	showdown_panel.visible = false
 	request_panel.visible = false
+	burn_panel.visible = false
+	board_panel.visible = false
+	pot_panel.visible = false
 	main_pot_label.text = "MAIN POT  0"
 	side_pot_label.text = "SIDE POT  0"
+	side_pot_label.visible = false
 
 	var raw_board: Variant = hand.get("board", [])
 	if raw_board is Array:
@@ -1089,6 +1206,7 @@ func _schedule_betting_round(street: String) -> void:
 	headline_label.text = street.to_upper()
 	event_label.text = ""
 	context_label.text = ""
+	_sync_wireframe_betting_state(street)
 
 	var raw_events: Variant = round_data.get("events", [])
 	var last_time: float = 0.0
@@ -1269,6 +1387,8 @@ func _enqueue_payout_from_data(raw: Variant, payout_index: int) -> void:
 func _enqueue_duty(duty: DealerTask) -> void:
 	duty.reset_clock()
 	pending_duties.append(duty)
+	cash_label.text = "TASK  %s" % _wireframe_task_name(duty.expected_action)
+	_sync_wireframe_state(duty)
 	_signal_duty_affordance(duty)
 	_refresh_pressure()
 
@@ -1425,7 +1545,7 @@ func _on_seat_pressed(seat_index: int) -> void:
 		else:
 			mistakes += 1
 			flow_combo = 0
-			_show_feedback("잘못된 지급 대상", BAD)
+			_show_local_feedback(seat_panels[seat_index], "NOT ELIGIBLE", BAD)
 			_append_history("× PAYOUT TARGET ERROR", BAD)
 			_refresh_hud()
 		return
@@ -1480,6 +1600,9 @@ func _after_duty_resolved(duty: DealerTask) -> void:
 			var side_after: int = int(duty.state.get("side_after", 0))
 			main_pot_label.text = "MAIN POT  %s" % _format_amount(main_after)
 			side_pot_label.text = "SIDE POT  %s" % _format_amount(side_after)
+			side_pot_label.visible = side_after > 0
+			if side_after > 0:
+				pot_panel.add_theme_stylebox_override("panel", _style(Color("1b2630"), PURPLE, 3, 24))
 			_after_collect(street, duty.state)
 		"board":
 			var street: String = String(duty.state.get("street", "flop"))
@@ -1541,13 +1664,18 @@ func _finish_hand() -> void:
 
 
 func _open_board(street: String) -> void:
+	board_panel.visible = true
+	burn_panel.visible = true
 	match street:
 		"flop":
+			burn_label.text = "BURN ×1"
 			for i in range(3):
 				board_panels[i].visible = true
 		"turn":
+			burn_label.text = "BURN ×2"
 			board_panels[3].visible = true
 		"river":
+			burn_label.text = "BURN ×3"
 			board_panels[4].visible = true
 
 
@@ -1563,8 +1691,11 @@ func _play_duty_feedback(duty: DealerTask) -> void:
 			_pulse_pot(GOOD)
 			await get_tree().create_timer(0.22).timeout
 		"board":
-			_pulse_pot(INFO)
-			await get_tree().create_timer(0.18).timeout
+			burn_panel.visible = true
+			_flash_panel(burn_panel, INFO)
+			await get_tree().create_timer(0.10).timeout
+			_soft_nudge(board_panel)
+			await get_tree().create_timer(0.12).timeout
 		"chip_change":
 			if duty.source_seat >= 0 and duty.source_seat < seat_panels.size():
 				_flash_panel(seat_panels[duty.source_seat], GOOD)
@@ -1595,7 +1726,12 @@ func _register_invalid_action(area_id: String) -> void:
 		flow_combo = 0
 		_refresh_hud()
 	if not message.is_empty():
-		_show_feedback(message, BAD if real_error else MUTED)
+		if area_id == "board":
+			_show_local_feedback(board_panel, message, BAD if real_error else MUTED)
+		elif area_id == "pot":
+			_show_local_feedback(pot_panel, message, BAD if real_error else MUTED)
+		else:
+			_show_feedback(message, BAD if real_error else MUTED)
 
 
 func _use_floor_assist() -> void:
@@ -1680,6 +1816,54 @@ func _refresh_pressure() -> void:
 		pressure_label.add_theme_color_override("font_color", BAD)
 
 	_refresh_floor_affordance()
+
+
+
+
+func _sync_wireframe_state(duty: DealerTask) -> void:
+	match duty.expected_action:
+		"deal":
+			board_panel.visible = false
+			burn_panel.visible = false
+			pot_panel.visible = false
+		"pot":
+			pot_panel.visible = true
+			var street: String = String(duty.state.get("street", "preflop"))
+			board_panel.visible = street != "preflop"
+			burn_panel.visible = street != "preflop"
+		"board":
+			board_panel.visible = true
+			burn_panel.visible = true
+			pot_panel.visible = true
+		"payout":
+			board_panel.visible = true
+			burn_panel.visible = false
+			pot_panel.visible = true
+
+
+func _sync_wireframe_betting_state(street: String) -> void:
+	pot_panel.visible = true
+	board_panel.visible = street != "preflop"
+	burn_panel.visible = street != "preflop"
+	cash_label.text = "TASK  TABLE"
+
+
+func _show_local_feedback(target: Control, text_value: String, color: Color) -> void:
+	if local_feedback_label == null or target == null:
+		return
+	var pos: Vector2 = target.position + Vector2(target.size.x * 0.5 - 90.0, -42.0)
+	local_feedback_label.position = pos
+	local_feedback_label.text = text_value
+	local_feedback_label.add_theme_color_override("font_color", color)
+	local_feedback_label.modulate = Color.WHITE
+	local_feedback_label.visible = true
+	var tween := create_tween()
+	tween.tween_interval(0.45)
+	tween.tween_property(local_feedback_label, "modulate:a", 0.0, 0.18)
+	tween.tween_callback(func() -> void:
+		local_feedback_label.visible = false
+		local_feedback_label.modulate = Color.WHITE
+	)
 
 
 
@@ -1845,7 +2029,10 @@ func _finish_shift() -> void:
 	pending_duties.clear()
 	scheduled_events.clear()
 	game_layer.visible = false
+	home_layer.visible = false
+	career_layer.visible = false
 	complete_layer.visible = true
+	_set_top_bar_mode("hidden")
 
 	var total: int = maxi(correct_actions + mistakes, 1)
 	var accuracy: int = int(round(float(correct_actions) / float(total) * 100.0))
@@ -1877,7 +2064,8 @@ func _refresh_hud() -> void:
 		accuracy = int(round(float(correct_actions) / float(total) * 100.0))
 	accuracy_label.text = "ACC %d%%" % accuracy
 	flow_label.text = "FLOW x%d" % flow_combo
-	cash_label.text = "TIP  %s" % _format_amount(cash)
+	if not session_active:
+		cash_label.text = "TIP  %s" % _format_amount(cash)
 
 
 func _refresh_shift_clock() -> void:
