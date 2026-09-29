@@ -1,6 +1,6 @@
 extends Control
 
-const BUILD_ID: String = "game-feel-stage5-v0.6"
+const BUILD_ID: String = "npc-dialogue-stage6-v0.7"
 
 const BG: Color = Color("0d1218")
 const PANEL: Color = Color("171e27")
@@ -41,6 +41,14 @@ const REQUEST_POSITIONS: Array[Vector2] = [
 	Vector2(432, 92),
 	Vector2(444, 308),
 	Vector2(234, 538),
+]
+const SPEECH_POSITIONS: Array[Vector2] = [
+	Vector2(30, 500),
+	Vector2(40, 112),
+	Vector2(248, 54),
+	Vector2(430, 112),
+	Vector2(448, 500),
+	Vector2(248, 604),
 ]
 var hands: Array[Dictionary] = []
 var roster: Array[NPCProfile] = []
@@ -105,6 +113,12 @@ var bet_labels: Array[Label] = []
 var board_panels: Array[Panel] = []
 var board_labels: Array[Label] = []
 var seat_hit_buttons: Array[Button] = []
+var speech_panels: Array[Panel] = []
+var speech_labels: Array[Label] = []
+var speech_tokens: Array[int] = []
+var speech_cooldowns: Array[float] = []
+var global_speech_cooldown: float = 0.0
+var speech_rng := RandomNumberGenerator.new()
 
 var history_labels: Array[Label] = []
 
@@ -120,6 +134,7 @@ func _process(delta: float) -> void:
 
 	shift_elapsed += delta
 	_refresh_shift_clock()
+	_update_speech_cooldowns(delta)
 	_age_pending_duties(delta)
 
 	if betting_running:
@@ -354,6 +369,7 @@ func _build_table() -> void:
 	_create_request_panel()
 	_create_showdown_panel()
 	_create_bets()
+	_create_speech_bubbles()
 
 
 func _create_seat(index: int) -> void:
@@ -557,6 +573,36 @@ func _create_bets() -> void:
 		bet_labels.append(label)
 
 
+
+
+func _create_speech_bubbles() -> void:
+	for i in range(6):
+		var bubble := Panel.new()
+		bubble.position = SPEECH_POSITIONS[i]
+		bubble.size = Vector2(156, 48)
+		bubble.visible = false
+		bubble.z_index = 20
+		bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bubble.add_theme_stylebox_override("panel", _style(Color("111820ee"), Color("6b7889"), 1, 12))
+		table.add_child(bubble)
+		speech_panels.append(bubble)
+
+		var label := Label.new()
+		label.position = Vector2(8, 5)
+		label.size = Vector2(140, 38)
+		label.text = ""
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.add_theme_font_size_override("font_size", 11)
+		label.add_theme_color_override("font_color", TEXT)
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bubble.add_child(label)
+		speech_labels.append(label)
+		speech_tokens.append(0)
+		speech_cooldowns.append(0.0)
+
+
 func _build_dealer_rail() -> void:
 	dealer_rail = Panel.new()
 	dealer_rail.position = Vector2(34, 774)
@@ -720,6 +766,12 @@ func _show_home() -> void:
 
 func _start_shift() -> void:
 	shift_seed = int((Time.get_ticks_msec() + cash * 31) % 2147483647)
+	speech_rng.seed = shift_seed + 1701
+	global_speech_cooldown = 0.0
+	for i in range(speech_cooldowns.size()):
+		speech_cooldowns[i] = 0.0
+		speech_tokens[i] += 1
+		speech_panels[i].visible = false
 	roster = NPCRoster.build(shift_seed)
 	hands = LiveShiftScenario.build(shift_seed, roster)
 	_apply_roster_to_seats()
@@ -858,6 +910,7 @@ func _fire_scheduled_event(event: Dictionary) -> void:
 				bet_panels[seat].visible = bet > 0
 				bet_labels[seat].text = _format_amount(bet)
 				headline_label.text = "%s · %s" % [_seat_name(seat), state]
+				_try_action_dialogue(seat, state)
 		"request":
 			_spawn_service_request(event)
 		"betting_closed":
@@ -880,6 +933,7 @@ func _spawn_service_request(event: Dictionary) -> void:
 		seat_panels[seat].add_theme_stylebox_override("panel", _style(Color("282136"), PURPLE, 2, 14))
 		seat_state_labels[seat].text = "REQUEST"
 
+	_say_npc(seat, "request", true)
 	_enqueue_duty(DealerTask.new({
 		"id": "service_%d_%s" % [hand_index, str(Time.get_ticks_msec())],
 		"phase": "SERVICE",
@@ -1005,9 +1059,11 @@ func _age_pending_duties(delta: float) -> void:
 				var warning: String = "딜러?"
 				if duty.source_seat >= 0 and duty.source_seat < roster.size():
 					warning = roster[duty.source_seat].warning_line
-				_show_feedback("%s: %s" % [seat_name, warning], ACCENT)
+				_say_text(duty.source_seat, warning, true)
 			elif duty.blocking:
-				_show_feedback("…", ACCENT)
+				var speaker: int = _pick_reaction_seat(-1)
+				if speaker >= 0:
+					_say_npc(speaker, "delay", true)
 
 		if duty.age < duty.patience_limit:
 			continue
@@ -1033,7 +1089,7 @@ func _age_pending_duties(delta: float) -> void:
 				miss_line = profile.miss_line
 			tips = maxi(tips - penalty, 0)
 			_append_history("× 요청 놓침 · TIP -%d" % penalty, BAD)
-			_show_feedback("%s: %s" % [_seat_name(duty.source_seat), miss_line], BAD)
+			_say_text(duty.source_seat, miss_line, true)
 			_refresh_request_panel_from_duties()
 			_refresh_hud()
 			_refresh_pressure()
@@ -1175,6 +1231,8 @@ func _resolve_duty(duty: DealerTask) -> void:
 	_append_history("✓ %s  +%d" % [duty.success_text, earned], GOOD)
 	_show_feedback("%s  ·  +%d" % [duty.success_text, earned], GOOD)
 	await _play_duty_feedback(duty)
+	if fast:
+		_try_fast_service_dialogue(duty)
 
 	pending_duties.erase(duty)
 	_after_duty_resolved(duty)
@@ -1227,6 +1285,8 @@ func _after_payout(duty: DealerTask) -> void:
 		main_pot_label.text = "MAIN POT  PAID"
 	else:
 		side_pot_label.text = "SIDE POT  PAID"
+	if duty.target_seat >= 0:
+		_say_npc(duty.target_seat, "win", true)
 
 	var hand: Dictionary = hands[hand_index]
 	var showdown: Dictionary = hand.get("showdown", {}) as Dictionary
@@ -1393,6 +1453,116 @@ func _refresh_pressure() -> void:
 		pressure_label.add_theme_color_override("font_color", BAD)
 
 	_refresh_floor_affordance()
+
+
+
+func _update_speech_cooldowns(delta: float) -> void:
+	global_speech_cooldown = maxf(global_speech_cooldown - delta, 0.0)
+	for i in range(speech_cooldowns.size()):
+		speech_cooldowns[i] = maxf(speech_cooldowns[i] - delta, 0.0)
+
+
+func _try_action_dialogue(seat: int, state: String) -> void:
+	if seat < 0 or seat >= roster.size():
+		return
+
+	var category: String = ""
+	if state.begins_with("CALL"):
+		category = "call"
+	elif state.begins_with("RAISE") or state.begins_with("BET"):
+		category = "raise"
+	elif state.begins_with("FOLD"):
+		category = "fold"
+	elif state.begins_with("ALL IN"):
+		category = "all_in"
+
+	if category.is_empty():
+		return
+
+	var chance: float = 0.22
+	match roster[seat].id:
+		"chatty_regular":
+			chance = 0.52
+		"new_player":
+			chance = 0.34
+		"demanding_vip":
+			chance = 0.20
+		"relaxed_tourist":
+			chance = 0.18
+
+	if category == "all_in":
+		chance = 0.85
+
+	if speech_rng.randf() <= chance:
+		_say_npc(seat, category)
+
+	if category == "all_in" and speech_rng.randf() <= 0.72:
+		var reactor: int = _pick_reaction_seat(seat)
+		if reactor >= 0:
+			_say_npc(reactor, "all_in_react", true)
+
+
+func _try_fast_service_dialogue(duty: DealerTask) -> void:
+	if roster.is_empty() or global_speech_cooldown > 0.0:
+		return
+
+	if duty.expected_action == "deal" or duty.expected_action == "board" or duty.expected_action == "pot":
+		if speech_rng.randf() <= 0.34:
+			var seat: int = speech_rng.randi_range(0, roster.size() - 1)
+			_say_npc(seat, "fast")
+
+
+func _pick_reaction_seat(excluded: int) -> int:
+	if roster.size() <= 1:
+		return -1
+	var candidates: Array[int] = []
+	for i in range(roster.size()):
+		if i != excluded:
+			candidates.append(i)
+	if candidates.is_empty():
+		return -1
+	return candidates[speech_rng.randi_range(0, candidates.size() - 1)]
+
+
+func _say_npc(seat: int, category: String, force: bool = false) -> void:
+	if seat < 0 or seat >= roster.size():
+		return
+
+	var lines: Array[String] = roster[seat].lines_for(category)
+	if lines.is_empty():
+		return
+
+	var line: String = lines[speech_rng.randi_range(0, lines.size() - 1)]
+	_say_text(seat, line, force)
+
+
+func _say_text(seat: int, text_value: String, force: bool = false) -> void:
+	if seat < 0 or seat >= speech_panels.size():
+		return
+	if text_value.is_empty():
+		return
+	if not force:
+		if global_speech_cooldown > 0.0 or speech_cooldowns[seat] > 0.0:
+			return
+
+	speech_tokens[seat] += 1
+	var token: int = speech_tokens[seat]
+	speech_labels[seat].text = text_value
+	speech_panels[seat].modulate = Color.WHITE
+	speech_panels[seat].visible = true
+	speech_cooldowns[seat] = 4.0
+	global_speech_cooldown = 1.25
+
+	var hold: float = clampf(1.15 + float(text_value.length()) * 0.035, 1.35, 2.25)
+	var tween := create_tween()
+	tween.tween_interval(hold)
+	tween.tween_property(speech_panels[seat], "modulate:a", 0.0, 0.18)
+	tween.tween_callback(func() -> void:
+		if seat < speech_tokens.size() and speech_tokens[seat] == token:
+			speech_panels[seat].visible = false
+			speech_panels[seat].modulate = Color.WHITE
+	)
+
 
 
 func _refresh_floor_affordance() -> void:
