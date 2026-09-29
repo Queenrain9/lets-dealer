@@ -21,13 +21,18 @@ jobs:
           include-templates: false
 
       - name: Import and parse project
-        run: godot --headless --path . --editor --quit
+        shell: bash
+        run: |
+          godot --headless --path . --editor --quit 2>&1 | tee /tmp/godot-import.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:' /tmp/godot-import.log; then
+            exit 1
+          fi
 
-      - name: Run core gameplay smoke test
-        run: godot --headless --path . --script res://tests/core_smoke_test.gd
+      - name: Check card-dealing rules
+        run: godot --headless --path . --script res://tests/test_deal_round.gd
 
-      - name: Run input baseline smoke test
-        run: godot --headless --path . --script res://tests/input_baseline_smoke_test.gd
+      - name: Check mouse and touch input
+        run: godot --headless --path . --script res://tests/test_table_input.gd
 
-      - name: Run dealer vertical slice smoke test
-        run: godot --headless --path . --script res://tests/vertical_slice_smoke_test.gd
+      - name: Launch main scene
+        run: godot --headless --path . --quit-after 2

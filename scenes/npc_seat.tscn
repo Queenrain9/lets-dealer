@@ -1,0 +1,132 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/npc_seat.gd" id="1"]
+[node name="NpcSeat" type="Control"]
+custom_minimum_size = Vector2(180, 284)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="Portrait" type="TextureRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -40.0
+offset_right = 40.0
+offset_top = 8.0
+offset_bottom = 88.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 91.0
+offset_bottom = 121.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 25
+theme_override_colors/font_color = Color(0.96, 0.92, 0.83, 1)
+text = "손님"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PersonalityLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 123.0
+offset_bottom = 147.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.68, 0.79, 0.70, 1)
+text = "차분한 손님"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TargetLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_top = -17.0
+offset_bottom = 7.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.95, 0.79, 0.45, 1)
+text = "NEXT"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DropZone" type="Panel" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 156.0
+offset_right = -8.0
+offset_bottom = 282.0
+mouse_filter = 2
+
+[node name="Slot0" type="Panel" parent="DropZone"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.28
+anchor_right = 0.28
+offset_left = -28.0
+offset_right = 28.0
+offset_top = 12.0
+offset_bottom = 89.0
+mouse_filter = 2
+
+[node name="Mark" type="Label" parent="DropZone/Slot0"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.71, 0.66, 0.48, 1)
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Slot1" type="Panel" parent="DropZone"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.72
+anchor_right = 0.72
+offset_left = -28.0
+offset_right = 28.0
+offset_top = 12.0
+offset_bottom = 89.0
+mouse_filter = 2
+
+[node name="Mark" type="Label" parent="DropZone/Slot1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.71, 0.66, 0.48, 1)
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CountLabel" type="Label" parent="DropZone"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 94.0
+offset_bottom = 117.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.73, 0.80, 0.68, 1)
+text = "0 / 2장"
+horizontal_alignment = 1

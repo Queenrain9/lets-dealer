@@ -1,0 +1,98 @@
+[gd_scene format=3]
+[node name="ResultPanel" type="Control"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dimmer" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.06, 0.05, 0.86)
+mouse_filter = 0
+
+[node name="ResultCard" type="Panel" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -285.0
+offset_right = 285.0
+offset_top = -240.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ResultBadge" type="Label" parent="ResultCard"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 36.0
+offset_right = 542.0
+offset_bottom = 64.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 19
+text = "PERFECT DEAL"
+horizontal_alignment = 1
+vertical_alignment = 1
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.95, 0.80, 0.48, 1)
+
+[node name="ResultTitle" type="Label" parent="ResultCard"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 92.0
+offset_right = 542.0
+offset_bottom = 146.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 34
+text = "배분 훈련 완료"
+horizontal_alignment = 1
+vertical_alignment = 1
+unique_name_in_owner = true
+
+[node name="ResultDescription" type="Label" parent="ResultCard"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 159.0
+offset_right = 542.0
+offset_bottom = 197.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 20
+text = "세 손님에게 카드를 정확히 배분했어요."
+horizontal_alignment = 1
+vertical_alignment = 1
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.75, 0.82, 0.74, 1)
+
+[node name="ResultStats" type="Label" parent="ResultCard"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 224.0
+offset_right = 542.0
+offset_bottom = 304.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 22
+text = "배분 6 / 6장   ·   정확도 100%\n실수 0회   ·   소요 시간 12초"
+horizontal_alignment = 1
+vertical_alignment = 1
+unique_name_in_owner = true
+
+[node name="AgainButton" type="Button" parent="ResultCard"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 48.0
+offset_top = 358.0
+offset_right = 522.0
+offset_bottom = 426.0
+text = "다시 훈련하기"
+theme_override_font_sizes/font_size = 23

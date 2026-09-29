@@ -1,0 +1,410 @@
+[gd_scene load_steps=6 format=3]
+[ext_resource type="Script" path="res://scripts/table.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/table_backdrop.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/card.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/npc_seat.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/result_panel.tscn" id="5"]
+[node name="Table" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+mouse_filter = 2
+
+[node name="Backdrop" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2")
+mouse_filter = 2
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 28
+
+[node name="Layout" type="VBoxContainer" parent="SafeMargin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 18
+
+[node name="Header" type="Control" parent="SafeMargin/Layout"]
+custom_minimum_size = Vector2(0, 122)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Eyebrow" type="Label" parent="SafeMargin/Layout/Header"]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 2.0
+offset_right = 446.0
+offset_bottom = 26.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 15
+text = "RIVER PUB  /  DEALER CAREER"
+horizontal_alignment = 0
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.85, 0.69, 0.44, 1)
+
+[node name="Title" type="Label" parent="SafeMargin/Layout/Header"]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 31.0
+offset_right = 514.0
+offset_bottom = 87.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 45
+text = "LUCKY DEALER"
+horizontal_alignment = 0
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.85, 0.64, 1)
+
+[node name="Subtitle" type="Label" parent="SafeMargin/Layout/Header"]
+layout_mode = 0
+offset_left = 7.0
+offset_top = 92.0
+offset_right = 497.0
+offset_bottom = 120.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "작은 테이블에서 시작하는 딜러의 첫걸음"
+horizontal_alignment = 0
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.71, 0.77, 0.69, 1)
+
+[node name="LevelBadge" type="Panel" parent="SafeMargin/Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -116.0
+offset_right = -4.0
+offset_top = 26.0
+offset_bottom = 108.0
+mouse_filter = 2
+
+[node name="LevelTag" type="Label" parent="SafeMargin/Layout/Header/LevelBadge"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 12.0
+offset_right = 112.0
+offset_bottom = 34.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 14
+text = "DEALER"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.80, 0.71, 0.53, 1)
+
+[node name="Level" type="Label" parent="SafeMargin/Layout/Header/LevelBadge"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 33.0
+offset_right = 112.0
+offset_bottom = 68.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 26
+text = "LV.01"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MissionPanel" type="Panel" parent="SafeMargin/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 101)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="MissionTag" type="Label" parent="SafeMargin/Layout/MissionPanel"]
+layout_mode = 0
+offset_left = 23.0
+offset_top = 13.0
+offset_right = 453.0
+offset_bottom = 37.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 17
+text = "현재 미션  ·  카드 배분"
+horizontal_alignment = 0
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.56, 0.83, 0.68, 1)
+
+[node name="MissionText" type="Label" parent="SafeMargin/Layout/MissionPanel"]
+layout_mode = 0
+offset_left = 22.0
+offset_top = 42.0
+offset_right = 632.0
+offset_bottom = 85.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 25
+text = "지민에게 첫 번째 카드를 주세요"
+horizontal_alignment = 0
+vertical_alignment = 1
+unique_name_in_owner = true
+
+[node name="Stats" type="HBoxContainer" parent="SafeMargin/Layout"]
+custom_minimum_size = Vector2(0, 82)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="TimePanel" type="Panel" parent="SafeMargin/Layout/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Tag" type="Label" parent="SafeMargin/Layout/Stats/TimePanel"]
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 8.0
+offset_bottom = 31.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.66, 0.75, 0.67, 1)
+text = "남은 시간"
+horizontal_alignment = 1
+
+[node name="TimerValue" type="Label" parent="SafeMargin/Layout/Stats/TimePanel"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 33.0
+offset_bottom = 75.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 29
+text = "01:00"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ProgressPanel" type="Panel" parent="SafeMargin/Layout/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Tag" type="Label" parent="SafeMargin/Layout/Stats/ProgressPanel"]
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 8.0
+offset_bottom = 31.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.66, 0.75, 0.67, 1)
+text = "카드 배분"
+horizontal_alignment = 1
+
+[node name="ProgressValue" type="Label" parent="SafeMargin/Layout/Stats/ProgressPanel"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 33.0
+offset_bottom = 75.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 29
+text = "0 / 6"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AccuracyPanel" type="Panel" parent="SafeMargin/Layout/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Tag" type="Label" parent="SafeMargin/Layout/Stats/AccuracyPanel"]
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 8.0
+offset_bottom = 31.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.66, 0.75, 0.67, 1)
+text = "정확도"
+horizontal_alignment = 1
+
+[node name="AccuracyValue" type="Label" parent="SafeMargin/Layout/Stats/AccuracyPanel"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 33.0
+offset_bottom = 75.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 29
+text = "100%"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayArea" type="Control" parent="SafeMargin/Layout"]
+custom_minimum_size = Vector2(0, 590)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Felt" type="Control" parent="SafeMargin/Layout/PlayArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2")
+table_only = true
+mouse_filter = 2
+
+[node name="Seats" type="HBoxContainer" parent="SafeMargin/Layout/PlayArea"]
+layout_mode = 1
+anchor_right = 1.0
+offset_top = 25.0
+offset_bottom = 309.0
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Seat0" parent="SafeMargin/Layout/PlayArea/Seats" instance=ExtResource("4")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Seat1" parent="SafeMargin/Layout/PlayArea/Seats" instance=ExtResource("4")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Seat2" parent="SafeMargin/Layout/PlayArea/Seats" instance=ExtResource("4")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TableBrand" type="Label" parent="SafeMargin/Layout/PlayArea"]
+layout_mode = 1
+anchor_top = 0.58
+anchor_bottom = 0.58
+anchor_right = 1.0
+offset_top = -45.0
+offset_bottom = -10.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 25
+theme_override_colors/font_color = Color(0.62, 0.75, 0.48, 0.65)
+text = "R I V E R   P U B"
+horizontal_alignment = 1
+
+[node name="TableBrandSub" type="Label" parent="SafeMargin/Layout/PlayArea"]
+layout_mode = 1
+anchor_top = 0.58
+anchor_bottom = 0.58
+anchor_right = 1.0
+offset_top = -9.0
+offset_bottom = 20.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.56, 0.72, 0.49, 0.60)
+text = "GOOD CARDS. GOOD PEOPLE."
+horizontal_alignment = 1
+
+[node name="DeckShadow" type="ColorRect" parent="SafeMargin/Layout/PlayArea"]
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -55.0
+offset_right = 67.0
+offset_top = -202.0
+offset_bottom = -28.0
+color = Color(0.60, 0.46, 0.31, 0.75)
+mouse_filter = 2
+
+[node name="DealCard" parent="SafeMargin/Layout/PlayArea" instance=ExtResource("3")]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -61.0
+offset_right = 61.0
+offset_top = -212.0
+offset_bottom = -38.0
+
+[node name="DeckLabel" type="Label" parent="SafeMargin/Layout/PlayArea"]
+layout_mode = 1
+anchor_top = 1.0
+anchor_bottom = 1.0
+anchor_right = 1.0
+offset_top = -26.0
+offset_bottom = 0.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 17
+theme_override_colors/font_color = Color(0.82, 0.78, 0.61, 1)
+text = "카드를 잡아 손님에게 주세요"
+horizontal_alignment = 1
+
+[node name="Footer" type="VBoxContainer" parent="SafeMargin/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="HintLabel" type="Label" parent="SafeMargin/Layout/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 27)
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "금색으로 표시된 손님의 카드 영역에 놓아주세요."
+horizontal_alignment = 1
+
+[node name="FooterInfo" type="HBoxContainer" parent="SafeMargin/Layout/Footer"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ModeLabel" type="Label" parent="SafeMargin/Layout/Footer/FooterInfo"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.58, 0.67, 0.60, 1)
+text = "배분 훈련  ·  3명 × 2장"
+
+[node name="MistakesLabel" type="Label" parent="SafeMargin/Layout/Footer/FooterInfo"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.83, 0.68, 0.47, 1)
+text = "실수 0 / 3"
+
+[node name="Actions" type="HBoxContainer" parent="SafeMargin/Layout/Footer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PauseButton" type="Button" parent="SafeMargin/Layout/Footer/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 21
+text = "일시정지"
+
+[node name="RestartButton" type="Button" parent="SafeMargin/Layout/Footer/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 21
+text = "처음부터"
+
+[node name="ResultPanel" parent="." instance=ExtResource("5")]
+unique_name_in_owner = true
+layout_mode = 1

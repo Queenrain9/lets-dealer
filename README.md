@@ -1,168 +1,55 @@
-# LET'S DEALER / 렛츠 딜러
+# Lucky Dealer - 카드 배분 훈련
 
-Godot 4.x 기반 모바일 딜러 액션 게임 프로젝트입니다.
+단비의 1인 모바일 게임 개발을 위한 첫 Godot 프로젝트입니다. 세 손님에게 두 장씩 카드를 배분하는 단계가 실행됩니다. 첨부 시안의 전체 게임은 `docs/game-design.md`에 정의되어 있습니다.
 
-이 저장소의 목표는 화면 목업이 아니라, 실제 iOS App Store 출시까지 확장 가능한 게임 구조를 만드는 것입니다. 현재 단계는 **Core Gameplay Prototype 0.2 — Chip & Pot Interaction**이며 최종 아트보다 입력, 상태, 인터랙션, 확장 구조를 우선합니다.
+## 바로 실행
 
-## 현재 플레이 가능한 범위
+1. Godot **4.7.2 안정 버전, 일반판**을 실행합니다. .NET판과 추가 애드온은 필요하지 않습니다.
+2. 프로젝트 관리자에서 **가져오기**를 누르고 이 폴더의 `project.godot`를 선택합니다.
+3. 편집기가 열리면 **F5**로 실행합니다. 메인 씬은 `scenes/table.tscn`입니다.
+4. 아래쪽 카드 한 장을 잡아 **금색 표시가 있는 손님의 카드 영역**에 놓습니다.
+5. 지민 → 맥스 → 소연 순서로 두 바퀴, 총 6장을 배분합니다.
 
-실행하면 `scenes/table_test.tscn`이 열립니다.
+카드 영역은 인물 아래의 두 칸이 있는 박스입니다. 인물 자체를 놓기 대상으로 사용하지 않습니다.
 
-1. **START HAND**를 누릅니다.
-2. 화면 하단의 카드를 길게 운반하지 않고, 강조된 플레이어 방향으로 **짧게 Swipe/Flick**합니다.
-3. 제스처 방향이 플레이어를 가리키면 카드는 해당 플레이어 앞의 별도 Card Zone으로 자동 스냅됩니다.
-4. 카드 위에 정확히 내려놓는 조작은 요구하지 않습니다. 방향을 잘못 보내면 Mistake가 올라가고 Combo가 초기화됩니다.
-5. 올바른 배분은 Perfect와 Combo에 기록됩니다.
-6. 홀카드 배분이 끝나면 고정 테스트 시나리오에 따라 실제 베팅 칩이 각 플레이어 앞에 생성됩니다.
-7. 현재 테스트 시나리오는 Player 1 = 20, Player 2 = 40, Player 3 = Fold, Player 4 = 40입니다.
-8. 각 베팅 칩 스택을 중앙 POT 방향으로 짧게 쓸어 모으면 실제 `PotState.main_pot`에 금액이 합산됩니다.
-9. 모든 베팅 칩을 걷기 전에는 FLOP을 열 수 없습니다.
-10. 전부 수거하면 POT 100이 되고 **OPEN FLOP**이 활성화됩니다.
-11. 이후 Flop → Turn → River → Showdown → Payout → Complete 상태 훅을 계속 테스트할 수 있습니다.
+## 확정된 훈련 규칙
 
-> Postflop betting, hand ranking, winner determination, manual winner payout은 아직 **의도적으로 placeholder**입니다.
+- 첫 카드 집기부터 60초가 시작됩니다.
+- 다른 손님에게 놓으면 실수 1회이며 카드가 돌아옵니다. 실수 3회 또는 시간 초과면 실패합니다.
+- 빈 영역에 놓거나 터치가 취소되면 실수 없이 돌아옵니다.
+- 일시정지와 앱 포커스 이탈은 시간을 멈추고 잡은 카드를 돌려놓습니다. **계속하기**로 재개합니다.
+- **처음부터**와 결과 화면의 **다시 훈련하기**는 시간·카드·실수를 초기화합니다.
+- PC는 왼쪽 마우스, 모바일 입력은 한 손가락으로 조작합니다. 두 번째 손가락은 진행 중인 카드를 조작하지 않습니다.
 
-## 구조
+## 들어 있는 것
 
-```text
-lets-dealer/
-├─ project.godot
-├─ scenes/
-│  └─ table_test.tscn
-├─ scripts/
-│  ├─ config/
-│  │  ├─ table_config.gd
-│  │  └─ prototype_hand_config.gd
-│  ├─ core/
-│  │  ├─ dealer_game_state.gd
-│  │  ├─ hand_state.gd
-│  │  ├─ player_seat.gd
-│  │  ├─ poker_table_state.gd
-│  │  ├─ pot_state.gd
-│  │  └─ session_result.gd
-│  ├─ gameplay/
-│  │  └─ table_test.gd
-│  └─ ui/
-│     ├─ draggable_card.gd
-│     ├─ swipe_chip_stack.gd
-│     └─ seat_view.gd
-└─ data/
-   ├─ table_configs/
-   │  └─ prototype_table.tres
-   └─ prototype_hands/
-      └─ core_hand_01.tres
+- `docs/game-design.md`, `docs/game-design.pdf`: 한 판 전체의 1페이지 기획서.
+- `docs/scene-structure.md`: 현재 씬·스크립트 구조.
+- `docs/asset-guide.md`: AI 이미지 제작과 에셋 교체 위치.
+- `docs/implementation-plan.md`: 이번 구현 순서와 검증 기준.
+- `docs/verification.md`: 실행한 검사와 현재 검증 범위.
+- `scenes/`: 편집 가능한 Table, Card, NpcSeat, ResultPanel 씬.
+- `scripts/`: 입력, 규칙, 좌석 표시, 테이블 화면.
+- `tests/`: 규칙 및 실제 씬의 마우스·터치 입력 검사.
+
+현재 그래픽은 코드로 그린 임시 벡터 그래픽입니다. NPC Portrait에 이미지를 넣으면 임시 인물 아이콘이 사라집니다. 배경·카드 뒷면 교체 방법은 에셋 안내를 참고하세요.
+
+## 자동 검사
+
+PowerShell에서 실행합니다. `GodotPath`에는 압축을 푼 실제 Godot 실행 파일 경로를 넣습니다.
+
+```powershell
+./tools/run-tests.ps1 -GodotPath 'C:/경로/Godot_v4.7.2-stable_win64_console.exe'
 ```
 
-## 설계 원칙
+각 검사의 종료 코드 0과 `0 failures`가 통과 기준입니다. 외부 테스트 프레임워크는 필요하지 않습니다.
 
-### Core state와 Visual 분리
+GitHub의 `main`에 푸시하거나 PR을 만들면 `.github/workflows/godot-check.yml`이 프로젝트 가져오기, 카드 배분 규칙 검사, 마우스·터치 입력 검사, 메인 씬 실행을 수행합니다.
 
-게임 규칙과 상태는 `scripts/core`에 있습니다. 씬과 UI는 상태를 표시하고 입력을 전달하는 역할만 합니다.
+## 다음 개발 작업
 
-예를 들어 카드 배분 규칙은 `DealerGameState.try_deal_card_to_seat()`에 있고, Swipe/Flick 입력 표현은 `DraggableCard`에 있습니다. 따라서 나중에 최종 카드 이미지, 손 애니메이션, 테이블 아트로 교체하더라도 카드 배분 규칙 자체를 다시 만들 필요가 없습니다.
+이 프로젝트는 **카드 배분 훈련까지 구현**되어 있습니다. 공용 카드 공개, 족보와 승자 판정, 칩 지급, 팁·경험치, 저장은 다음 기능입니다. 한 판 전체가 이미 완성된 것으로 표시하지 않습니다.
 
-### Touch / Pointer 공통 입력
+Android APK/AAB와 iOS 빌드는 이번 작업에 포함하지 않습니다. 이후 Android SDK/JDK와 내보내기 템플릿을 설정하고 실제 기기에서 화면, 터치, 백그라운드 전환, 한국어 폰트를 확인해야 합니다.
 
-`DraggableCard`는 다음을 모두 처리합니다.
-
-- `InputEventScreenTouch`
-- `InputEventScreenDrag`
-- 마우스 press / motion / release
-
-현재 딜링 조작 원칙은 **정밀 드래그앤드롭이 아니라 짧은 방향 제스처 + 자동 스냅**입니다.
-
-베팅 칩 수거도 같은 철학을 따릅니다. 칩을 정확한 좌표에 하나씩 옮기는 것이 아니라, 플레이어 앞의 베팅 스택을 중앙 POT 방향으로 짧게 쓸면 자동으로 수거됩니다. 조작 정밀도보다 **어떤 딜러 업무를 언제 처리해야 하는지**가 게임의 난이도가 되도록 설계합니다.
-
-카드는 손가락이나 마우스를 따라 좌석까지 끝까지 이동하지 않습니다. 제스처 중에는 카드가 살짝 끌리는 피드백만 보여주고, 손을 놓으면 방향을 판정해 해당 Card Zone으로 짧게 이동합니다. 따라서 조작 자체의 정밀도가 게임 난이도의 중심이 되지 않도록 설계했습니다.
-
-즉 PC Godot Editor에서는 마우스로, iPhone/Xogot에서는 손가락으로 같은 조작을 테스트할 수 있습니다.
-
-프로젝트 설정에도 touch ↔ mouse emulation을 켜 두어 초기 테스트 환경 차이를 줄입니다.
-
-### 데이터 분리
-
-테이블 설정은 코드에 하드코딩하지 않고 `TableConfig` Resource와 `.tres` 데이터로 분리했습니다.
-
-현재는 좌석 수, 시작 스택, 블라인드, 카드 수만 있지만 이후 다음 데이터를 같은 방향으로 추가합니다.
-
-- 테이블 난이도
-- 손님 행동 패턴
-- 업무 종류
-- EXP 요구량
-- Tip / Combo 보상
-- 스테이지 해금 조건
-
-### Prototype과 Production 구분
-
-현재 씬의 색상, 카드 박스, 좌석 패널은 전부 placeholder입니다.
-
-**Production 기반으로 보는 부분**
-- DealerGameState
-- PokerTableState
-- HandState
-- PlayerSeat
-- PotState
-- SessionResult
-- TableConfig
-- Touch / Pointer swipe 입력 경계
-- 화면 표현과 상태 로직의 분리
-
-**Prototype 전용인 부분**
-- 단순 패널 기반 테이블/좌석/카드/Card Zone
-- ADVANCE PHASE 버튼
-- 자동 보드 오픈
-- 승자 미결정 Showdown
-- 실제 칩이 없는 Betting / Payout
-
-## 현재 0.2에서 구현된 것
-
-- 고정 preflop betting scenario를 별도 Resource로 분리
-- PlayerSeat의 stack / current_bet / hand_contribution 추적
-- 베팅 시 실제 stack 차감
-- 플레이어별 betting chip stack 표시
-- Touch / Pointer 기반 중앙 POT 방향 chip sweep
-- 수거한 금액을 실제 PotState.main_pot에 합산
-- 모든 베팅 칩 수거 전 FLOP 진행 차단
-- POT 100 완성 후 OPEN FLOP 활성화
-- 카드 딜링 + 칩 수거가 Perfect / Combo 결과에 함께 반영
-- Godot 4.7.2 자동 테스트에서 Core, 연속 카드 딜, 카드 원위치, Chip/Pot UI 흐름 검증
-
-## 다음 개발 단계
-
-다음 milestone은 **Board Dealing 0.3**입니다.
-
-우선순위:
-
-1. FLOP 버튼을 제거하고 딜러가 직접 보드 카드를 오픈하는 조작으로 전환
-2. Burn Card 상태 도입
-3. Flop 3장 / Turn 1장 / River 1장을 실제 dealer action으로 처리
-4. Board Zone과 Deck Zone의 조작 경계 분리
-5. Street별 betting hook 구조 정리
-6. 이후 동일한 Chip & Pot 수거 루프를 postflop에도 재사용할 수 있게 확장
-
-그 다음은 **Showdown & Winner 0.4 → Manual Payout 0.5 → 한 핸드 완전 플레이 가능 0.6** 순서로 진행합니다.
-
-## 실행
-
-Godot 4.x에서 저장소 루트를 프로젝트로 Import한 뒤 실행합니다.
-
-기준 viewport는 **720 × 1280 portrait**이며 `canvas_items` stretch를 사용합니다.
-
-현재 단계에서는 최종 캐릭터 일러스트나 시안 이미지를 프로젝트 내부 아트로 사용하지 않습니다. 첨부 시안은 장기적인 제품 방향과 플레이 감각의 참고 자료입니다.
-
-
-## 자동 검증
-
-`.github/workflows/godot-check.yml`은 Godot 4.7.2에서 프로젝트를 headless import/parse하고, `tests/core_smoke_test.gd`로 다음 핵심 흐름을 확인하도록 준비되어 있습니다.
-
-- 설정 Resource 로드
-- Hand 시작
-- 올바른 좌석 순서로 8장 배분
-- Betting → Flop → Turn → River → Showdown → Payout → Complete 전이
-- Board 5장 생성
-- Preflop betting stack 3개 생성 및 총 100 수거
-- 모든 칩 수거 전 FLOP 진행 차단
-- POT 100 완료 후 FLOP 진행 가능
-- Perfect / Mistake 결과 상태 확인
-
-이 smoke test는 최종 게임 플레이 테스트를 대체하지 않으며, 핵심 상태 구조가 깨지는 회귀를 빠르게 잡기 위한 최소 안전망입니다.
+Godot는 MIT 라이선스입니다. 배포판에는 Godot 및 사용하는 리소스의 필요한 라이선스 고지를 포함하세요: https://godotengine.org/license/
