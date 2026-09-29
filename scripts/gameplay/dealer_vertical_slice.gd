@@ -35,6 +35,8 @@ var seat_state_labels: Array[Label] = []
 var seat_card_a_labels: Array[Label] = []
 var seat_card_b_labels: Array[Label] = []
 var chip_buttons: Array[Button] = []
+var board_card_panels: Array[PanelContainer] = []
+var board_card_labels: Array[Label] = []
 
 var session_active: bool = false
 var seconds_left: float = SESSION_SECONDS
@@ -76,12 +78,23 @@ func _cache_seat_nodes() -> void:
 	for index in range(6):
 		var seat_root: PanelContainer = get_node("Table/Seat%d" % index) as PanelContainer
 		seat_panels.append(seat_root)
-		seat_name_labels.append(seat_root.get_node("Name") as Label)
-		seat_stack_labels.append(seat_root.get_node("Stack") as Label)
-		seat_state_labels.append(seat_root.get_node("State") as Label)
-		seat_card_a_labels.append(seat_root.get_node("CardA") as Label)
-		seat_card_b_labels.append(seat_root.get_node("CardB") as Label)
+		seat_name_labels.append(seat_root.get_node("Content/Name") as Label)
+		seat_stack_labels.append(seat_root.get_node("Content/Stack") as Label)
+		seat_state_labels.append(seat_root.get_node("Content/State") as Label)
+		seat_card_a_labels.append(
+			seat_root.get_node("Content/Cards/CardA") as Label
+		)
+		seat_card_b_labels.append(
+			seat_root.get_node("Content/Cards/CardB") as Label
+		)
 		chip_buttons.append(get_node("Table/Chip%d" % index) as Button)
+
+	for index in range(5):
+		var card_panel: PanelContainer = board_row.get_node(
+			"Card%d" % index
+		) as PanelContainer
+		board_card_panels.append(card_panel)
+		board_card_labels.append(card_panel.get_node("Label") as Label)
 
 func _connect_native_inputs() -> void:
 	start_button.button_down.connect(_start_hand)
@@ -296,20 +309,16 @@ func _refresh_hud() -> void:
 
 func _refresh_board() -> void:
 	_clear_board()
-	for card_id in game.table.hand.board:
-		var card: Label = Label.new()
-		card.custom_minimum_size = Vector2(72, 96)
-		card.text = card_id
-		card.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		card.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		card.add_theme_font_size_override("font_size", 24)
-		card.add_theme_color_override("font_color", Color(0.08, 0.09, 0.11, 1.0))
-		card.add_theme_stylebox_override("normal", _make_card_style())
-		board_row.add_child(card)
+	for index in range(game.table.hand.board.size()):
+		if index >= board_card_panels.size():
+			break
+		board_card_panels[index].visible = true
+		board_card_labels[index].text = game.table.hand.board[index]
 
 func _clear_board() -> void:
-	for child in board_row.get_children():
-		child.queue_free()
+	for index in range(board_card_panels.size()):
+		board_card_panels[index].visible = false
+		board_card_labels[index].text = ""
 
 func _mark_showdown_winner() -> void:
 	for index in range(6):
@@ -364,20 +373,6 @@ func _make_seat_style(
 	style.corner_radius_top_right = 18
 	style.corner_radius_bottom_left = 18
 	style.corner_radius_bottom_right = 18
-	return style
-
-func _make_card_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.95, 0.93, 0.87, 1.0)
-	style.border_color = Color(0.84, 0.68, 0.35, 1.0)
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 9
-	style.corner_radius_top_right = 9
-	style.corner_radius_bottom_left = 9
-	style.corner_radius_bottom_right = 9
 	return style
 
 func _format_number(value: int) -> String:
