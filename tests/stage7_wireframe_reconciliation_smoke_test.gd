@@ -12,7 +12,7 @@ func _run() -> int:
 	var runtime_text: String = runtime_file.get_as_text()
 
 	for required in [
-		'const BUILD_ID: String = "wireframe-reconcile-stage7-v0.8"',
+		'dealer_hand_left',
 		'h1.text = "RIVER PUB"',
 		'goal_kicker.text = "TODAY GOAL"',
 		'reward_kicker.text = "SHIFT REWARD"',
