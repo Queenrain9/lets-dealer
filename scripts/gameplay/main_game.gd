@@ -1,6 +1,6 @@
 extends Control
 
-const BUILD_ID: String = "dealer-management-stage1-v0.2"
+const BUILD_ID: String = "live-table-stage1b-v0.3"
 
 const BG: Color = Color("0d1218")
 const PANEL: Color = Color("171e27")
@@ -17,7 +17,7 @@ const INFO: Color = Color("67a8ff")
 
 const PLAYER_NAMES: Array[String] = ["지민", "맥스", "소연", "토니", "김사장", "찰리"]
 const PLAYER_STACKS: Array[int] = [12500, 8900, 4300, 9600, 6800, 3200]
-const BOARD_VALUES: Array[String] = ["J♣", "10♥", "7♠", "A♠", "2♦"]
+const BOARD_VALUES: Array[String] = ["J♦", "10♥", "7♠", "3♦", "2♣"]
 const SEAT_POSITIONS: Array[Vector2] = [
 	Vector2(22, 390),
 	Vector2(74, 174),
@@ -34,12 +34,23 @@ const BET_POSITIONS: Array[Vector2] = [
 	Vector2(425, 412),
 	Vector2(284, 484),
 ]
+const ACTION_ORDER: Array[String] = ["deal", "pot", "board", "chip_change", "payout", "floor"]
+const ACTION_LABELS: Dictionary = {
+	"deal": "DEAL",
+	"pot": "POT",
+	"board": "BOARD",
+	"chip_change": "CHANGE",
+	"payout": "PAYOUT",
+	"floor": "FLOOR",
+}
 
 var tasks: Array[DealerTask] = []
 var current_task_index: int = -1
 var time_left: float = 0.0
+var timeout_strikes: int = 0
 var session_active: bool = false
 var resolving: bool = false
+var payout_targeting: bool = false
 
 var correct_actions: int = 0
 var mistakes: int = 0
@@ -61,8 +72,9 @@ var timer_label: Label
 
 var phase_label: Label
 var headline_label: Label
-var prompt_label: Label
+var event_label: Label
 var feedback_label: Label
+var tool_mode_label: Label
 
 var table: Panel
 var pot_panel: Panel
@@ -77,12 +89,13 @@ var seat_panels: Array[Panel] = []
 var seat_name_labels: Array[Label] = []
 var seat_stack_labels: Array[Label] = []
 var seat_state_labels: Array[Label] = []
+var seat_hit_buttons: Array[Button] = []
 var bet_panels: Array[Panel] = []
 var bet_labels: Array[Label] = []
 var board_panels: Array[Panel] = []
 var board_labels: Array[Label] = []
 
-var choice_buttons: Array[Button] = []
+var action_buttons: Dictionary = {}
 var history_labels: Array[Label] = []
 
 
@@ -140,44 +153,44 @@ func _build_top_bar() -> void:
 	top.add_child(level_label)
 
 	cash_label = Label.new()
-	cash_label.position = Vector2(260, 13)
-	cash_label.size = Vector2(120, 22)
+	cash_label.position = Vector2(248, 13)
+	cash_label.size = Vector2(130, 22)
 	cash_label.text = "TIP  12,480"
 	cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cash_label.add_theme_color_override("font_color", ACCENT)
 	top.add_child(cash_label)
 
 	crown_label = Label.new()
-	crown_label.position = Vector2(260, 42)
-	crown_label.size = Vector2(120, 20)
+	crown_label.position = Vector2(248, 42)
+	crown_label.size = Vector2(130, 20)
 	crown_label.text = "REP  120"
 	crown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	crown_label.add_theme_color_override("font_color", MUTED)
 	top.add_child(crown_label)
 
 	accuracy_label = Label.new()
-	accuracy_label.position = Vector2(398, 10)
-	accuracy_label.size = Vector2(90, 24)
+	accuracy_label.position = Vector2(390, 10)
+	accuracy_label.size = Vector2(92, 24)
 	accuracy_label.text = "ACC 100%"
 	accuracy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	accuracy_label.add_theme_color_override("font_color", TEXT)
 	top.add_child(accuracy_label)
 
 	combo_label = Label.new()
-	combo_label.position = Vector2(496, 10)
-	combo_label.size = Vector2(88, 24)
+	combo_label.position = Vector2(490, 10)
+	combo_label.size = Vector2(96, 24)
 	combo_label.text = "COMBO x0"
 	combo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	combo_label.add_theme_color_override("font_color", ACCENT)
 	top.add_child(combo_label)
 
 	timer_label = Label.new()
-	timer_label.position = Vector2(596, 9)
-	timer_label.size = Vector2(70, 50)
-	timer_label.text = "00:00"
+	timer_label.position = Vector2(594, 9)
+	timer_label.size = Vector2(72, 50)
+	timer_label.text = "READY"
 	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	timer_label.add_theme_font_size_override("font_size", 18)
+	timer_label.add_theme_font_size_override("font_size", 16)
 	timer_label.add_theme_color_override("font_color", GOOD)
 	top.add_child(timer_label)
 
@@ -205,15 +218,15 @@ func _build_home() -> void:
 	var h1 := Label.new()
 	h1.position = Vector2(24, 76)
 	h1.size = Vector2(620, 105)
-	h1.text = "테이블을 읽고\n딜러 업무를 처리하세요"
+	h1.text = "테이블은 멈추지 않습니다"
 	h1.add_theme_font_size_override("font_size", 31)
 	h1.add_theme_color_override("font_color", TEXT)
 	hero.add_child(h1)
 
 	var desc := Label.new()
-	desc.position = Vector2(24, 204)
-	desc.size = Vector2(620, 105)
-	desc.text = "정확한 좌표에 카드를 놓는 게임이 아닙니다.\n손님과 베팅 상태를 보고 지금 해야 할 일을 판단하세요."
+	desc.position = Vector2(24, 178)
+	desc.size = Vector2(620, 126)
+	desc.text = "손님들의 액션, 베팅칩, 보드와 요청을 보면서\n딜러 도구로 테이블을 운영하세요.\n문제도 보기 선택지도 없습니다."
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.add_theme_font_size_override("font_size", 16)
 	desc.add_theme_color_override("font_color", MUTED)
@@ -238,24 +251,25 @@ func _build_home() -> void:
 	var ptitle := Label.new()
 	ptitle.position = Vector2(20, 18)
 	ptitle.size = Vector2(620, 28)
-	ptitle.text = "이번 근무에서 생기는 일"
+	ptitle.text = "DEALER TOOLS"
 	ptitle.add_theme_font_size_override("font_size", 18)
 	ptitle.add_theme_color_override("font_color", TEXT)
 	preview.add_child(ptitle)
 
 	var lines: Array[String] = [
-		"카드 배분 → 베팅 회수",
-		"ALL IN 금액 차이 → 사이드팟 판단",
-		"플랍 진행 중 손님의 칩 교환 요청",
-		"턴 / 리버 진행과 추가 베팅 정리",
-		"쇼다운 → 메인팟 / 사이드팟 각각 지급",
+		"DEAL        핸드 시작과 카드 배분",
+		"POT         베팅칩 회수 · 메인/사이드팟 정리",
+		"BOARD       번 카드 처리 후 다음 스트리트 진행",
+		"CHANGE      손님의 칩 교환 요청 처리",
+		"PAYOUT      팟 지급 모드 → 실제 좌석 선택",
+		"FLOOR       막혔을 때 호출 가능 · 점수 페널티",
 	]
 	for i in range(lines.size()):
 		var item := Label.new()
-		item.position = Vector2(22, 72 + i * 51)
-		item.size = Vector2(620, 34)
-		item.text = "0%d   %s" % [i + 1, lines[i]]
-		item.add_theme_font_size_override("font_size", 15)
+		item.position = Vector2(22, 64 + i * 44)
+		item.size = Vector2(620, 32)
+		item.text = lines[i]
+		item.add_theme_font_size_override("font_size", 14)
 		item.add_theme_color_override("font_color", ACCENT if i == 0 else MUTED)
 		preview.add_child(item)
 
@@ -267,48 +281,48 @@ func _build_game() -> void:
 	game_layer.visible = false
 	add_child(game_layer)
 
-	_build_mission_panel()
+	_build_table_status()
 	_build_table()
-	_build_decision_panel()
+	_build_tool_panel()
 	_build_history_panel()
 
 
-func _build_mission_panel() -> void:
-	var mission := Panel.new()
-	mission.position = Vector2(24, 10)
-	mission.size = Vector2(672, 118)
-	mission.add_theme_stylebox_override("panel", _style(PANEL, INFO, 2, 17))
-	game_layer.add_child(mission)
+func _build_table_status() -> void:
+	var status := Panel.new()
+	status.position = Vector2(24, 10)
+	status.size = Vector2(672, 108)
+	status.add_theme_stylebox_override("panel", _style(PANEL, INFO, 2, 17))
+	game_layer.add_child(status)
 
 	phase_label = Label.new()
-	phase_label.position = Vector2(18, 12)
-	phase_label.size = Vector2(120, 24)
+	phase_label.position = Vector2(18, 10)
+	phase_label.size = Vector2(120, 22)
 	phase_label.text = "PREFLOP"
 	phase_label.add_theme_color_override("font_color", INFO)
 	phase_label.add_theme_font_size_override("font_size", 12)
-	mission.add_child(phase_label)
+	status.add_child(phase_label)
 
 	headline_label = Label.new()
-	headline_label.position = Vector2(18, 38)
+	headline_label.position = Vector2(18, 34)
 	headline_label.size = Vector2(636, 28)
-	headline_label.text = "현재 미션"
-	headline_label.add_theme_font_size_override("font_size", 18)
+	headline_label.text = ""
+	headline_label.add_theme_font_size_override("font_size", 17)
 	headline_label.add_theme_color_override("font_color", TEXT)
-	mission.add_child(headline_label)
+	status.add_child(headline_label)
 
-	prompt_label = Label.new()
-	prompt_label.position = Vector2(18, 70)
-	prompt_label.size = Vector2(636, 38)
-	prompt_label.text = ""
-	prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	prompt_label.add_theme_font_size_override("font_size", 13)
-	prompt_label.add_theme_color_override("font_color", MUTED)
-	mission.add_child(prompt_label)
+	event_label = Label.new()
+	event_label.position = Vector2(18, 67)
+	event_label.size = Vector2(636, 30)
+	event_label.text = ""
+	event_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	event_label.add_theme_font_size_override("font_size", 13)
+	event_label.add_theme_color_override("font_color", MUTED)
+	status.add_child(event_label)
 
 
 func _build_table() -> void:
 	table = Panel.new()
-	table.position = Vector2(34, 148)
+	table.position = Vector2(34, 134)
 	table.size = Vector2(652, 628)
 	table.add_theme_stylebox_override("panel", _style(FELT, Color("755b32"), 6, 54))
 	game_layer.add_child(table)
@@ -338,6 +352,7 @@ func _create_seat(index: int) -> void:
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.add_theme_font_size_override("font_size", 15)
 	name_label.add_theme_color_override("font_color", TEXT)
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seat.add_child(name_label)
 	seat_name_labels.append(name_label)
 
@@ -348,6 +363,7 @@ func _create_seat(index: int) -> void:
 	stack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stack_label.add_theme_font_size_override("font_size", 13)
 	stack_label.add_theme_color_override("font_color", ACCENT)
+	stack_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seat.add_child(stack_label)
 	seat_stack_labels.append(stack_label)
 
@@ -360,8 +376,19 @@ func _create_seat(index: int) -> void:
 	state_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	state_label.add_theme_font_size_override("font_size", 12)
 	state_label.add_theme_color_override("font_color", MUTED)
+	state_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seat.add_child(state_label)
 	seat_state_labels.append(state_label)
+
+	var hit := Button.new()
+	hit.position = Vector2.ZERO
+	hit.size = seat.size
+	hit.flat = true
+	hit.focus_mode = Control.FOCUS_NONE
+	hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	hit.pressed.connect(_on_seat_pressed.bind(index))
+	seat.add_child(hit)
+	seat_hit_buttons.append(hit)
 
 
 func _create_board() -> void:
@@ -388,6 +415,7 @@ func _create_board() -> void:
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.add_theme_font_size_override("font_size", 15)
 		label.add_theme_color_override("font_color", Color("171b20"))
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(label)
 		board_labels.append(label)
 
@@ -479,54 +507,57 @@ func _create_bets() -> void:
 		bet_labels.append(label)
 
 
-func _build_decision_panel() -> void:
+func _build_tool_panel() -> void:
 	var panel := Panel.new()
-	panel.position = Vector2(24, 794)
-	panel.size = Vector2(672, 230)
+	panel.position = Vector2(24, 780)
+	panel.size = Vector2(672, 250)
 	panel.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 18))
 	game_layer.add_child(panel)
 
-	var title := Label.new()
-	title.position = Vector2(18, 12)
-	title.size = Vector2(636, 24)
-	title.text = "지금 해야 할 딜러 업무를 선택하세요"
-	title.add_theme_font_size_override("font_size", 14)
-	title.add_theme_color_override("font_color", MUTED)
-	panel.add_child(title)
+	tool_mode_label = Label.new()
+	tool_mode_label.position = Vector2(18, 10)
+	tool_mode_label.size = Vector2(636, 24)
+	tool_mode_label.text = "DEALER TOOLS"
+	tool_mode_label.add_theme_font_size_override("font_size", 13)
+	tool_mode_label.add_theme_color_override("font_color", MUTED)
+	panel.add_child(tool_mode_label)
 
-	for i in range(3):
+	for i in range(ACTION_ORDER.size()):
+		var action_id: String = ACTION_ORDER[i]
 		var button := Button.new()
-		button.position = Vector2(18, 52 + i * 54)
-		button.size = Vector2(636, 46)
-		button.text = "-"
-		button.add_theme_font_size_override("font_size", 15)
-		button.add_theme_stylebox_override("normal", _style(PANEL_2, LINE, 1, 12))
-		button.add_theme_stylebox_override("hover", _style(Color("283446"), ACCENT, 1, 12))
-		button.add_theme_stylebox_override("pressed", _style(Color("33270f"), ACCENT, 2, 12))
+		var col: int = i % 3
+		var row: int = int(i / 3)
+		button.position = Vector2(18 + col * 211, 48 + row * 86)
+		button.size = Vector2(194, 70)
+		button.text = String(ACTION_LABELS[action_id])
+		button.add_theme_font_size_override("font_size", 16)
+		button.add_theme_stylebox_override("normal", _style(PANEL_2, LINE, 1, 13))
+		button.add_theme_stylebox_override("hover", _style(Color("283446"), ACCENT, 1, 13))
+		button.add_theme_stylebox_override("pressed", _style(Color("33270f"), ACCENT, 2, 13))
 		button.add_theme_color_override("font_color", TEXT)
-		button.pressed.connect(_on_choice_pressed.bind(i))
+		button.pressed.connect(_on_action_pressed.bind(action_id))
 		panel.add_child(button)
-		choice_buttons.append(button)
+		action_buttons[action_id] = button
 
 
 func _build_history_panel() -> void:
 	var panel := Panel.new()
-	panel.position = Vector2(24, 1042)
-	panel.size = Vector2(672, 116)
+	panel.position = Vector2(24, 1046)
+	panel.size = Vector2(672, 112)
 	panel.add_theme_stylebox_override("panel", _style(Color("111820"), LINE, 1, 15))
 	game_layer.add_child(panel)
 
 	var title := Label.new()
 	title.position = Vector2(14, 8)
 	title.size = Vector2(120, 20)
-	title.text = "SHIFT LOG"
+	title.text = "TABLE LOG"
 	title.add_theme_font_size_override("font_size", 11)
 	title.add_theme_color_override("font_color", MUTED)
 	panel.add_child(title)
 
 	for i in range(3):
 		var line := Label.new()
-		line.position = Vector2(14, 32 + i * 25)
+		line.position = Vector2(14, 31 + i * 24)
 		line.size = Vector2(644, 22)
 		line.text = "—"
 		line.add_theme_font_size_override("font_size", 11)
@@ -543,6 +574,7 @@ func _build_complete() -> void:
 	add_child(complete_layer)
 
 	var panel := Panel.new()
+	panel.name = "Panel"
 	panel.position = Vector2(46, 130)
 	panel.size = Vector2(628, 610)
 	panel.add_theme_stylebox_override("panel", _style(PANEL, ACCENT, 2, 24))
@@ -597,13 +629,13 @@ func _build_complete() -> void:
 
 func _build_feedback() -> void:
 	feedback_label = Label.new()
-	feedback_label.position = Vector2(210, 510)
-	feedback_label.size = Vector2(300, 54)
+	feedback_label.position = Vector2(180, 498)
+	feedback_label.size = Vector2(360, 58)
 	feedback_label.visible = false
 	feedback_label.z_index = 200
 	feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	feedback_label.add_theme_font_size_override("font_size", 17)
+	feedback_label.add_theme_font_size_override("font_size", 16)
 	feedback_label.add_theme_stylebox_override("normal", _style(Color("10161de8"), LINE, 1, 14))
 	add_child(feedback_label)
 
@@ -611,6 +643,7 @@ func _build_feedback() -> void:
 func _show_home() -> void:
 	session_active = false
 	resolving = false
+	payout_targeting = false
 	home_layer.visible = true
 	game_layer.visible = false
 	complete_layer.visible = false
@@ -628,38 +661,36 @@ func _start_shift() -> void:
 	current_task_index = 0
 	session_active = true
 	resolving = false
+	payout_targeting = false
 	correct_actions = 0
 	mistakes = 0
 	combo = 0
 	max_combo = 0
 	tips = 0
+	timeout_strikes = 0
 
 	home_layer.visible = false
 	game_layer.visible = true
 	complete_layer.visible = false
 
-	for i in range(history_labels.size()):
-		history_labels[i].text = "—"
+	for label in history_labels:
+		label.text = "—"
 
+	_set_tools_disabled(false)
 	_apply_task(tasks[current_task_index])
 	_refresh_hud()
 
 
 func _apply_task(task: DealerTask) -> void:
 	time_left = task.time_limit
+	timeout_strikes = 0
+	payout_targeting = false
 	phase_label.text = task.phase
 	headline_label.text = task.headline
-	prompt_label.text = task.prompt
-
-	for i in range(choice_buttons.size()):
-		if i < task.choices.size():
-			choice_buttons[i].text = task.choices[i]
-			choice_buttons[i].visible = true
-			choice_buttons[i].disabled = false
-		else:
-			choice_buttons[i].visible = false
-
+	event_label.text = task.event_text
+	tool_mode_label.text = "DEALER TOOLS"
 	_apply_table_state(task.state)
+	_set_tools_disabled(false)
 	_refresh_timer()
 
 
@@ -685,9 +716,9 @@ func _apply_table_state(state: Dictionary) -> void:
 
 	var raw_bets: Variant = state.get("bets", [])
 	if raw_bets is Array:
-		var bet_values: Array = raw_bets as Array
+		var values: Array = raw_bets as Array
 		for i in range(bet_panels.size()):
-			var amount: int = int(bet_values[i]) if i < bet_values.size() else 0
+			var amount: int = int(values[i]) if i < values.size() else 0
 			bet_panels[i].visible = amount > 0
 			bet_labels[i].text = _format_amount(amount)
 
@@ -699,27 +730,72 @@ func _apply_table_state(state: Dictionary) -> void:
 			if seat_index >= 0 and seat_index < seat_panels.size():
 				seat_panels[seat_index].add_theme_stylebox_override(
 					"panel",
-					_style(Color("2b2618"), ACCENT, 3, 14)
+					_style(Color("202b34"), INFO, 2, 14)
 				)
 
-	showdown_panel.visible = current_task_index >= 10
+	showdown_panel.visible = tasks[current_task_index].phase == "SHOWDOWN"
 	if showdown_panel.visible:
-		showdown_label.text = "SHOWDOWN\n소연  A♠ K♠\n토니  Q♦ Q♣\n찰리  J♣ 10♣"
+		showdown_label.text = "SHOWDOWN\n소연  A♠ A♥\n토니  9♠ 9♥\n찰리  K♣ J♣"
 
 
-func _on_choice_pressed(choice_index: int) -> void:
+func _on_action_pressed(action_id: String) -> void:
 	if not session_active or resolving or current_task_index < 0:
 		return
 
 	var task: DealerTask = tasks[current_task_index]
-	if choice_index == task.correct_index:
+
+	if payout_targeting:
+		if action_id == "payout":
+			_cancel_payout_targeting()
+		else:
+			_register_wrong(task, action_id)
+		return
+
+	if action_id == task.expected_action:
+		if action_id == "payout":
+			_begin_payout_targeting(task)
+		else:
+			_resolve_correct(task)
+		return
+
+	if action_id == "floor":
+		_use_floor_assist(task)
+		return
+
+	_register_wrong(task, action_id)
+
+
+func _begin_payout_targeting(task: DealerTask) -> void:
+	payout_targeting = true
+	tool_mode_label.text = "PAYOUT · 지급할 좌석을 선택"
+	_show_feedback("PAYOUT MODE", INFO)
+	_apply_eligible_styles(task.state)
+
+
+func _cancel_payout_targeting() -> void:
+	payout_targeting = false
+	tool_mode_label.text = "DEALER TOOLS"
+	_apply_table_state(tasks[current_task_index].state)
+
+
+func _on_seat_pressed(seat_index: int) -> void:
+	if not session_active or resolving or not payout_targeting:
+		return
+
+	var task: DealerTask = tasks[current_task_index]
+	if seat_index == task.target_seat:
+		payout_targeting = false
+		tool_mode_label.text = "DEALER TOOLS"
 		_resolve_correct(task)
 	else:
-		_resolve_wrong(task, choice_index)
+		_register_wrong(task, "seat_%d" % seat_index)
+		_show_feedback("잘못된 지급 대상", BAD)
 
 
 func _resolve_correct(task: DealerTask) -> void:
 	resolving = true
+	payout_targeting = false
+	_set_tools_disabled(true)
 	correct_actions += 1
 	combo += 1
 	max_combo = maxi(max_combo, combo)
@@ -735,57 +811,84 @@ func _resolve_correct(task: DealerTask) -> void:
 	tips += earned
 	cash += earned
 
-	_show_feedback(
-		("%s  ·  TIP +%d" % [task.success_text, earned]),
-		GOOD
-	)
+	_show_feedback("%s  ·  TIP +%d" % [task.success_text, earned], GOOD)
 	_append_history("✓ %s  +%d" % [task.success_text, earned], GOOD)
-	_disable_choices()
 	_refresh_hud()
 
-	await _play_action_feedback(task.action_kind)
-	await get_tree().create_timer(0.18).timeout
-
-	current_task_index += 1
-	if current_task_index >= tasks.size():
-		_finish_shift()
-		return
-
-	resolving = false
-	_apply_task(tasks[current_task_index])
+	await _play_action_feedback(task)
+	await get_tree().create_timer(0.16).timeout
+	_advance_task()
 
 
-func _resolve_wrong(task: DealerTask, choice_index: int) -> void:
+func _register_wrong(task: DealerTask, attempted: String) -> void:
 	mistakes += 1
 	combo = 0
-	time_left = maxf(time_left - 1.5, 0.5)
-
-	var chosen: String = "-"
-	if choice_index >= 0 and choice_index < task.choices.size():
-		chosen = task.choices[choice_index]
-
-	_show_feedback("잘못된 처리 · %s" % chosen, BAD)
-	_append_history("× %s  · 다시 판단" % chosen, BAD)
-	_flash_mission(BAD)
+	time_left = maxf(time_left - 1.0, 0.5)
+	var reaction: String = _contextual_reaction(task.expected_action, attempted)
+	_show_feedback(reaction, BAD)
+	_append_history("× %s" % reaction, BAD)
+	_flash_status(BAD)
 	_refresh_hud()
+
+
+func _contextual_reaction(expected: String, attempted: String) -> String:
+	if expected == "pot" and attempted == "board":
+		return "베팅칩이 아직 테이블에 있습니다"
+	if expected == "pot":
+		return "ACTION CLOSED · 팟 정리가 남았습니다"
+	if expected == "board" and attempted == "pot":
+		return "팟은 이미 정리되었습니다"
+	if expected == "board":
+		return "다음 스트리트 진행 대기"
+	if expected == "chip_change":
+		return "토니: 칩 교환 부탁했는데요"
+	if expected == "deal":
+		return "플레이어들이 카드를 기다립니다"
+	if expected == "payout":
+		return "쇼다운 정산이 남았습니다"
+	return "지금 테이블 흐름과 맞지 않는 처리"
+
+
+func _use_floor_assist(task: DealerTask) -> void:
+	resolving = true
+	payout_targeting = false
+	_set_tools_disabled(true)
+	mistakes += 1
+	combo = 0
+	tips = maxi(tips - 50, 0)
+	_show_feedback("FLOOR ASSIST · TIP -50", BAD)
+	_append_history("! FLOOR ASSIST · 자동 처리", INFO)
+	_refresh_hud()
+	await _play_action_feedback(task)
+	await get_tree().create_timer(0.35).timeout
+	_advance_task()
 
 
 func _handle_timeout() -> void:
 	if resolving or current_task_index < 0:
 		return
 
-	resolving = true
 	var task: DealerTask = tasks[current_task_index]
+	timeout_strikes += 1
 	mistakes += 1
 	combo = 0
-	_show_feedback("TIME OUT · FLOOR ASSIST", BAD)
-	_append_history("× 시간 초과 · FLOOR ASSIST", BAD)
-	_disable_choices()
 	_refresh_hud()
 
-	await _play_action_feedback(task.action_kind)
-	await get_tree().create_timer(0.35).timeout
+	if timeout_strikes >= 3:
+		_use_floor_assist(task)
+		return
 
+	time_left = maxf(task.time_limit * 0.5, 3.0)
+	var message: String = "TABLE WAITING..."
+	if task.phase == "SERVICE":
+		message = "토니: 딜러?"
+	elif task.phase == "SHOWDOWN":
+		message = "승자들이 지급을 기다립니다"
+	_show_feedback(message, BAD)
+	_append_history("× 지연 · %s" % message, BAD)
+
+
+func _advance_task() -> void:
 	current_task_index += 1
 	if current_task_index >= tasks.size():
 		_finish_shift()
@@ -795,52 +898,66 @@ func _handle_timeout() -> void:
 	_apply_task(tasks[current_task_index])
 
 
-func _play_action_feedback(kind: String) -> void:
-	match kind:
+func _play_action_feedback(task: DealerTask) -> void:
+	match task.expected_action:
 		"deal":
 			for i in range(seat_panels.size()):
 				seat_state_labels[i].text = "DEALT 2"
 				_flash_panel(seat_panels[i], GOOD)
 				await get_tree().create_timer(0.055).timeout
-		"collect":
+		"pot":
 			for bet in bet_panels:
 				bet.visible = false
+			if task.id == "preflop_collect":
+				main_pot_label.text = "MAIN POT  5,400"
+				side_pot_label.text = "SIDE POT  5,000"
 			_pulse_pot(GOOD)
-			await get_tree().create_timer(0.32).timeout
-		"sidepot":
-			main_pot_label.add_theme_color_override("font_color", GOOD)
-			side_pot_label.add_theme_color_override("font_color", ACCENT)
-			_pulse_pot(ACCENT)
-			await get_tree().create_timer(0.38).timeout
-		"flop":
-			for i in range(3):
-				board_panels[i].visible = true
-				await get_tree().create_timer(0.10).timeout
-		"turn":
-			board_panels[3].visible = true
 			await get_tree().create_timer(0.30).timeout
-		"river":
-			board_panels[4].visible = true
-			await get_tree().create_timer(0.30).timeout
+		"board":
+			if task.id == "flop":
+				for i in range(3):
+					board_panels[i].visible = true
+					await get_tree().create_timer(0.09).timeout
+			elif task.id == "turn":
+				board_panels[3].visible = true
+				await get_tree().create_timer(0.25).timeout
+			elif task.id == "river":
+				board_panels[4].visible = true
+				await get_tree().create_timer(0.25).timeout
 		"chip_change":
 			request_label.text = "칩 교환 완료"
 			request_panel.add_theme_stylebox_override("panel", _style(Color("153126"), GOOD, 2, 13))
+			_flash_panel(seat_panels[3], GOOD)
+			await get_tree().create_timer(0.34).timeout
+		"payout":
+			if task.id == "main_payout":
+				main_pot_label.text = "MAIN POT  지급 완료"
+			else:
+				side_pot_label.text = "SIDE POT  지급 완료"
+			if task.target_seat >= 0 and task.target_seat < seat_panels.size():
+				_flash_panel(seat_panels[task.target_seat], GOOD)
 			await get_tree().create_timer(0.38).timeout
-		"main_payout":
-			main_pot_label.text = "MAIN POT  지급 완료"
-			_flash_panel(seat_panels[2], GOOD)
-			await get_tree().create_timer(0.40).timeout
-		"side_payout":
-			side_pot_label.text = "SIDE POT  지급 완료"
-			_flash_panel(seat_panels[5], GOOD)
-			await get_tree().create_timer(0.40).timeout
 		_:
-			await get_tree().create_timer(0.25).timeout
+			await get_tree().create_timer(0.20).timeout
+
+
+func _apply_eligible_styles(state: Dictionary) -> void:
+	_reset_seat_styles()
+	var raw: Variant = state.get("eligible_seats", [])
+	if raw is Array:
+		for value: Variant in raw:
+			var seat_index: int = int(value)
+			if seat_index >= 0 and seat_index < seat_panels.size():
+				seat_panels[seat_index].add_theme_stylebox_override(
+					"panel",
+					_style(Color("1c2c39"), INFO, 3, 14)
+				)
 
 
 func _finish_shift() -> void:
 	session_active = false
 	resolving = false
+	payout_targeting = false
 	game_layer.visible = false
 	complete_layer.visible = true
 
@@ -887,9 +1004,10 @@ func _refresh_timer() -> void:
 		timer_label.add_theme_color_override("font_color", GOOD)
 
 
-func _disable_choices() -> void:
-	for button in choice_buttons:
-		button.disabled = true
+func _set_tools_disabled(disabled: bool) -> void:
+	for action_id: String in ACTION_ORDER:
+		var button: Button = action_buttons[action_id] as Button
+		button.disabled = disabled
 
 
 func _append_history(text_value: String, color: Color) -> void:
@@ -917,13 +1035,13 @@ func _show_feedback(text_value: String, color: Color) -> void:
 	)
 
 
-func _flash_mission(color: Color) -> void:
-	var original: Color = prompt_label.get_theme_color("font_color")
-	prompt_label.add_theme_color_override("font_color", color)
+func _flash_status(color: Color) -> void:
+	var original: Color = event_label.get_theme_color("font_color")
+	event_label.add_theme_color_override("font_color", color)
 	var tween := create_tween()
 	tween.tween_interval(0.20)
 	tween.tween_callback(func() -> void:
-		prompt_label.add_theme_color_override("font_color", original)
+		event_label.add_theme_color_override("font_color", original)
 	)
 
 
