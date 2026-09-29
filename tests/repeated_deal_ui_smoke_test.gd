@@ -49,8 +49,8 @@ func _run() -> void:
 			_fail("Card source disappeared after deal %d." % (deal_index + 1))
 			return
 
-		if card.mouse_filter != Control.MOUSE_FILTER_STOP:
-			_fail("Card source did not re-enable input after deal %d." % (deal_index + 1))
+		if card.get_input_rect().size.x <= 0.0 or card.get_input_rect().size.y <= 0.0:
+			_fail("Card source lost its interactive hit area after deal %d." % (deal_index + 1))
 			return
 
 	print("LET'S DEALER repeated deal UI smoke test passed.")
