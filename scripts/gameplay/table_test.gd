@@ -1,12 +1,15 @@
 extends Control
 
-const MIN_SWIPE_DISTANCE: float = 42.0
-const MIN_DIRECTION_SCORE: float = 0.35
+const MIN_CARD_SWIPE_DISTANCE: float = 42.0
+const MIN_CARD_DIRECTION_SCORE: float = 0.35
+const MIN_CHIP_SWEEP_DISTANCE: float = 34.0
+const MIN_CHIP_DIRECTION_SCORE: float = 0.25
 
 @onready var phase_label: Label = $PhaseLabel
 @onready var stats_label: Label = $StatsLabel
 @onready var hint_label: Label = $HintLabel
 @onready var board_row: HBoxContainer = $TableSurface/BoardRow
+@onready var pot_label: Label = $TableSurface/PotLabel
 @onready var card_drag: DraggableCard = $CardDrag
 @onready var start_hand_button: Button = $StartHandButton
 @onready var advance_button: Button = $AdvanceButton
@@ -15,14 +18,20 @@ var game: DealerGameState = DealerGameState.new()
 var seat_views: Array[SeatView] = []
 var card_zone_panels: Array[Control] = []
 var card_rows: Array[HBoxContainer] = []
+var chip_stacks: Array[SwipeChipStack] = []
 
 func _ready() -> void:
 	var table_config: TableConfig = load("res://data/table_configs/prototype_table.tres") as TableConfig
-	if table_config == null:
-		push_error("Could not load prototype table configuration.")
+	var hand_config: PrototypeHandConfig = load(
+		"res://data/prototype_hands/core_hand_01.tres"
+	) as PrototypeHandConfig
+
+	if table_config == null or hand_config == null:
+		push_error("Could not load prototype gameplay configuration.")
 		return
 
 	game.configure(table_config)
+	game.configure_prototype_hand(hand_config)
 
 	seat_views = [
 		$TableSurface/Seat0,
@@ -45,12 +54,24 @@ func _ready() -> void:
 		$TableSurface/CardZone3/Cards,
 	]
 
+	chip_stacks = [
+		$TableSurface/ChipStack0,
+		$TableSurface/ChipStack1,
+		$TableSurface/ChipStack2,
+		$TableSurface/ChipStack3,
+	]
+
 	for seat_view in seat_views:
 		var seat: PlayerSeat = game.table.get_seat(seat_view.seat_index)
 		seat_view.configure(seat.seat_index, seat.display_name, seat.stack)
 
+	for chip_stack in chip_stacks:
+		chip_stack.sweep_released.connect(_on_chip_sweep_released)
+
 	game.phase_changed.connect(_on_phase_changed)
 	game.expected_deal_seat_changed.connect(_on_expected_deal_seat_changed)
+	game.betting_ready.connect(_on_betting_ready)
+	game.bet_collected.connect(_on_bet_collected)
 	game.mistake_recorded.connect(_on_mistake_recorded)
 	game.hand_completed.connect(_on_hand_completed)
 
@@ -59,6 +80,10 @@ func _ready() -> void:
 	advance_button.pressed.connect(_on_advance_pressed)
 
 	card_drag.disarm()
+	for chip_stack in chip_stacks:
+		chip_stack.disarm()
+
+	_refresh_pot()
 	_refresh_ui()
 	hint_label.text = "Press START HAND. This scene is a gameplay test, not final UI."
 
@@ -67,16 +92,23 @@ func _on_start_hand_pressed() -> void:
 	game.start_hand()
 	_arm_next_card()
 	hint_label.text = "Swipe the card toward the highlighted player."
+	_refresh_all_seat_views()
+	_refresh_pot()
 	_refresh_ui()
 
 func _on_advance_pressed() -> void:
-	game.advance_prototype_phase()
+	if not game.advance_prototype_phase():
+		if game.table.hand.phase == HandState.Phase.BETTING_PREFLOP:
+			hint_label.text = "Collect every betting stack into the pot first."
+		_refresh_ui()
+		return
+
 	_refresh_board()
 	_refresh_ui()
 
 	match game.table.hand.phase:
 		HandState.Phase.FLOP:
-			hint_label.text = "Flop opened. Betting/chip handling is the next milestone."
+			hint_label.text = "Flop opened. Postflop betting is still placeholder."
 		HandState.Phase.TURN:
 			hint_label.text = "Turn opened."
 		HandState.Phase.RIVER:
@@ -84,7 +116,7 @@ func _on_advance_pressed() -> void:
 		HandState.Phase.SHOWDOWN:
 			hint_label.text = "Showdown hook reached. Hand ranking is still placeholder."
 		HandState.Phase.PAYOUT:
-			hint_label.text = "Payout hook reached. Manual chip payout comes next."
+			hint_label.text = "Payout hook reached. Manual pot payout comes next."
 		HandState.Phase.COMPLETE:
 			hint_label.text = "Hand complete. Start the next hand."
 
@@ -94,12 +126,12 @@ func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> 
 		return
 
 	var swipe_delta: Vector2 = end_position - start_position
-	if swipe_delta.length() < MIN_SWIPE_DISTANCE:
+	if swipe_delta.length() < MIN_CARD_SWIPE_DISTANCE:
 		card_drag.snap_home()
 		hint_label.text = "Use a short swipe toward the highlighted player."
 		return
 
-	var target_seat_index: int = _resolve_swipe_target(start_position, end_position)
+	var target_seat_index: int = _resolve_card_swipe_target(start_position, end_position)
 	if target_seat_index < 0:
 		card_drag.snap_home()
 		hint_label.text = "Swipe toward a player, then release."
@@ -115,23 +147,78 @@ func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> 
 	var dealt_card_id: String = String(seat.hole_cards.back())
 	var flight_start: Vector2 = card_drag.global_position
 
-	# The deck card must be ready for the next deal immediately.
-	# A separate transient visual handles the flight animation so input is never
-	# locked behind a tween/await from the previous card.
 	card_drag.snap_home()
 	_arm_next_card()
 	_animate_dealt_card_to_zone(target_seat_index, dealt_card_id, flight_start)
 
 	if game.table.hand.phase == HandState.Phase.DEALING:
 		hint_label.text = "Good. Swipe the next card toward the highlighted player."
-	else:
-		hint_label.text = "Hole cards complete. Prototype betting phase is ready."
 
 	_refresh_ui()
 
-func _resolve_swipe_target(start_position: Vector2, end_position: Vector2) -> int:
+func _on_betting_ready() -> void:
+	_refresh_all_seat_views()
+	_refresh_pot()
+
+	for seat_index in range(chip_stacks.size()):
+		var seat: PlayerSeat = game.table.get_seat(seat_index)
+		chip_stacks[seat_index].arm(seat.current_bet)
+
+	hint_label.text = "Bets are in. Sweep each chip stack toward the center pot."
+	_refresh_ui()
+
+func _on_chip_sweep_released(
+	seat_index: int,
+	start_position: Vector2,
+	end_position: Vector2
+) -> void:
+	if game.table.hand.phase != HandState.Phase.BETTING_PREFLOP:
+		return
+
+	var chip_stack: SwipeChipStack = chip_stacks[seat_index]
+	var sweep_delta: Vector2 = end_position - start_position
+
+	if sweep_delta.length() < MIN_CHIP_SWEEP_DISTANCE:
+		chip_stack.snap_home()
+		hint_label.text = "Sweep the chips toward the center pot."
+		return
+
+	var pot_center: Vector2 = pot_label.get_global_rect().get_center()
+	var target_vector: Vector2 = pot_center - start_position
+
+	if target_vector.length_squared() <= 0.001:
+		chip_stack.snap_home()
+		return
+
+	var direction_score: float = sweep_delta.normalized().dot(target_vector.normalized())
+	if direction_score < MIN_CHIP_DIRECTION_SCORE:
+		chip_stack.snap_home()
+		hint_label.text = "Move that betting stack toward POT."
+		return
+
+	var seat: PlayerSeat = game.table.get_seat(seat_index)
+	var amount: int = seat.current_bet
+	var flight_start: Vector2 = chip_stack.global_position
+
+	if not game.try_collect_bet_from_seat(seat_index):
+		chip_stack.snap_home()
+		return
+
+	chip_stack.disarm()
+	_animate_chip_to_pot(amount, flight_start)
+	_refresh_all_seat_views()
+	_refresh_pot()
+	_refresh_ui()
+
+func _on_bet_collected(_seat_index: int, _amount: int, pot_total: int) -> void:
+	if game.all_bets_collected():
+		hint_label.text = "Pot complete: %d. Open the flop." % pot_total
+	else:
+		hint_label.text = "Good. Collect the remaining betting stacks."
+
+func _resolve_card_swipe_target(start_position: Vector2, end_position: Vector2) -> int:
 	var swipe_vector: Vector2 = end_position - start_position
-	if swipe_vector.length() < MIN_SWIPE_DISTANCE:
+	if swipe_vector.length() < MIN_CARD_SWIPE_DISTANCE:
 		return -1
 
 	var swipe_direction: Vector2 = swipe_vector.normalized()
@@ -149,7 +236,7 @@ func _resolve_swipe_target(start_position: Vector2, end_position: Vector2) -> in
 			best_score = score
 			best_index = index
 
-	if best_score < MIN_DIRECTION_SCORE:
+	if best_score < MIN_CARD_DIRECTION_SCORE:
 		return -1
 
 	return best_index
@@ -186,6 +273,21 @@ func _finish_dealt_card_animation(
 		flying_card.queue_free()
 	_add_card_to_zone(seat_index, card_id)
 
+func _animate_chip_to_pot(amount: int, start_global_position: Vector2) -> void:
+	var flying_chip: PanelContainer = _build_chip_panel(amount)
+	add_child(flying_chip)
+	flying_chip.z_index = 18
+	flying_chip.global_position = start_global_position
+
+	var target_center: Vector2 = pot_label.get_global_rect().get_center()
+	var target_position: Vector2 = target_center - (flying_chip.size * 0.5)
+
+	var tween: Tween = create_tween()
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(flying_chip, "global_position", target_position, 0.14)
+	tween.finished.connect(flying_chip.queue_free, CONNECT_ONE_SHOT)
+
 func _add_card_to_zone(seat_index: int, card_id: String) -> void:
 	var card_panel: PanelContainer = _build_card_panel(card_id, Vector2(44, 58))
 	card_rows[seat_index].add_child(card_panel)
@@ -217,6 +319,32 @@ func _build_card_panel(card_id: String, card_size: Vector2) -> PanelContainer:
 	card_panel.add_child(card_label)
 
 	return card_panel
+
+func _build_chip_panel(amount: int) -> PanelContainer:
+	var chip_panel: PanelContainer = PanelContainer.new()
+	chip_panel.custom_minimum_size = Vector2(70, 46)
+	chip_panel.size = Vector2(70, 46)
+	chip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var chip_style: StyleBoxFlat = StyleBoxFlat.new()
+	chip_style.bg_color = Color(0.62, 0.16, 0.15, 1.0)
+	chip_style.border_width_left = 3
+	chip_style.border_width_top = 3
+	chip_style.border_width_right = 3
+	chip_style.border_width_bottom = 3
+	chip_style.border_color = Color(0.95, 0.75, 0.45, 1.0)
+	chip_style.corner_radius_top_left = 22
+	chip_style.corner_radius_top_right = 22
+	chip_style.corner_radius_bottom_left = 22
+	chip_style.corner_radius_bottom_right = 22
+	chip_panel.add_theme_stylebox_override("panel", chip_style)
+
+	var amount_label: Label = Label.new()
+	amount_label.text = str(amount)
+	amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	amount_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	chip_panel.add_child(amount_label)
+	return chip_panel
 
 func _on_phase_changed(_phase: int) -> void:
 	_refresh_ui()
@@ -252,6 +380,9 @@ func _clear_hand_visuals() -> void:
 		for child in card_row.get_children():
 			child.queue_free()
 
+	for chip_stack in chip_stacks:
+		chip_stack.disarm()
+
 	_clear_board()
 
 func _clear_board() -> void:
@@ -273,6 +404,14 @@ func _refresh_board() -> void:
 
 		board_row.add_child(card_panel)
 
+func _refresh_all_seat_views() -> void:
+	for seat_view in seat_views:
+		var seat: PlayerSeat = game.table.get_seat(seat_view.seat_index)
+		seat_view.configure(seat.seat_index, seat.display_name, seat.stack)
+
+func _refresh_pot() -> void:
+	pot_label.text = "POT  %d" % game.table.hand.pot.total_amount()
+
 func _refresh_ui() -> void:
 	phase_label.text = "PHASE · " + game.get_phase_label()
 	stats_label.text = "Perfect %d   Mistakes %d   Combo x%d" % [
@@ -286,11 +425,28 @@ func _refresh_ui() -> void:
 	start_hand_button.disabled = not can_start
 	start_hand_button.text = "NEXT HAND" if phase == HandState.Phase.COMPLETE else "START HAND"
 
-	advance_button.disabled = (
-		phase == HandState.Phase.IDLE
-		or phase == HandState.Phase.DEALING
-		or phase == HandState.Phase.COMPLETE
-	)
+	match phase:
+		HandState.Phase.BETTING_PREFLOP:
+			advance_button.text = "OPEN FLOP"
+			advance_button.disabled = not game.all_bets_collected()
+		HandState.Phase.FLOP:
+			advance_button.text = "OPEN TURN"
+			advance_button.disabled = false
+		HandState.Phase.TURN:
+			advance_button.text = "OPEN RIVER"
+			advance_button.disabled = false
+		HandState.Phase.RIVER:
+			advance_button.text = "SHOWDOWN"
+			advance_button.disabled = false
+		HandState.Phase.SHOWDOWN:
+			advance_button.text = "PAYOUT"
+			advance_button.disabled = false
+		HandState.Phase.PAYOUT:
+			advance_button.text = "END HAND"
+			advance_button.disabled = false
+		_:
+			advance_button.text = "ADVANCE PHASE"
+			advance_button.disabled = true
 
 	if phase == HandState.Phase.DEALING:
 		_on_expected_deal_seat_changed(game.expected_deal_seat())
