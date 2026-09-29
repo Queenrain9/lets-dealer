@@ -9,9 +9,9 @@ Godot 4.x 기반 모바일 딜러 액션 게임 프로젝트입니다.
 실행하면 `scenes/table_test.tscn`이 열립니다.
 
 1. **START HAND**를 누릅니다.
-2. 화면 하단의 카드 한 장을 노란색으로 강조된 좌석으로 드래그합니다.
-3. 4개 좌석에 2장씩, 총 8장을 올바른 순서로 배분합니다.
-4. 잘못된 좌석에 놓으면 Mistake가 올라가고 Combo가 초기화됩니다.
+2. 화면 하단의 카드를 길게 운반하지 않고, 강조된 플레이어 방향으로 **짧게 Swipe/Flick**합니다.
+3. 제스처 방향이 플레이어를 가리키면 카드는 해당 플레이어 앞의 별도 Card Zone으로 자동 스냅됩니다.
+4. 카드 위에 정확히 내려놓는 조작은 요구하지 않습니다. 방향을 잘못 보내면 Mistake가 올라가고 Combo가 초기화됩니다.
 5. 올바른 배분은 Perfect와 Combo에 기록됩니다.
 6. 홀카드 배분이 끝나면 최소 상태 머신이 Betting → Flop → Turn → River → Showdown → Payout → Complete로 진행됩니다.
 7. Flop / Turn / River 카드는 실제 덱 상태에서 보드로 이동합니다.
@@ -52,7 +52,7 @@ lets-dealer/
 
 게임 규칙과 상태는 `scripts/core`에 있습니다. 씬과 UI는 상태를 표시하고 입력을 전달하는 역할만 합니다.
 
-예를 들어 카드 배분 규칙은 `DealerGameState.try_deal_card_to_seat()`에 있고, 드래그 표현은 `DraggableCard`에 있습니다. 따라서 나중에 최종 카드 이미지, 손 애니메이션, 테이블 아트로 교체하더라도 카드 배분 규칙 자체를 다시 만들 필요가 없습니다.
+예를 들어 카드 배분 규칙은 `DealerGameState.try_deal_card_to_seat()`에 있고, Swipe/Flick 입력 표현은 `DraggableCard`에 있습니다. 따라서 나중에 최종 카드 이미지, 손 애니메이션, 테이블 아트로 교체하더라도 카드 배분 규칙 자체를 다시 만들 필요가 없습니다.
 
 ### Touch / Pointer 공통 입력
 
@@ -62,7 +62,11 @@ lets-dealer/
 - `InputEventScreenDrag`
 - 마우스 press / motion / release
 
-즉 PC Godot Editor에서는 마우스로 테스트하고, iPhone/Xogot에서는 손가락 입력으로 같은 상호작용을 사용하도록 설계되어 있습니다.
+현재 딜링 조작 원칙은 **정밀 드래그앤드롭이 아니라 짧은 방향 제스처 + 자동 스냅**입니다.
+
+카드는 손가락이나 마우스를 따라 좌석까지 끝까지 이동하지 않습니다. 제스처 중에는 카드가 살짝 끌리는 피드백만 보여주고, 손을 놓으면 방향을 판정해 해당 Card Zone으로 짧게 이동합니다. 따라서 조작 자체의 정밀도가 게임 난이도의 중심이 되지 않도록 설계했습니다.
+
+즉 PC Godot Editor에서는 마우스로, iPhone/Xogot에서는 손가락으로 같은 조작을 테스트할 수 있습니다.
 
 프로젝트 설정에도 touch ↔ mouse emulation을 켜 두어 초기 테스트 환경 차이를 줄입니다.
 
@@ -91,11 +95,11 @@ lets-dealer/
 - PotState
 - SessionResult
 - TableConfig
-- Touch / Pointer drag 입력 경계
+- Touch / Pointer swipe 입력 경계
 - 화면 표현과 상태 로직의 분리
 
 **Prototype 전용인 부분**
-- 단순 패널 기반 테이블/좌석/카드
+- 단순 패널 기반 테이블/좌석/카드/Card Zone
 - ADVANCE PHASE 버튼
 - 자동 보드 오픈
 - 승자 미결정 Showdown
