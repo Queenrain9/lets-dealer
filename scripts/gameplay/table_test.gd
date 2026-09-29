@@ -72,12 +72,10 @@ func _ready() -> void:
 
 	start_hand_button.pressed.connect(_on_start_hand_pressed)
 	advance_button.pressed.connect(_on_advance_pressed)
-	card_drag.gui_input.connect(_on_card_gui_input)
+	card_drag.pressed.connect(_commit_card_action)
 
 	for chip_stack in chip_stacks:
-		chip_stack.gui_input.connect(
-			_on_chip_gui_input.bind(chip_stack.seat_index)
-		)
+		chip_stack.pressed.connect(_commit_chip_action.bind(chip_stack.seat_index))
 
 	card_drag.disarm()
 	for chip_stack in chip_stacks:
@@ -86,23 +84,6 @@ func _ready() -> void:
 	_refresh_pot()
 	_refresh_ui()
 	hint_label.text = "Press START HAND. This scene is a gameplay test, not final UI."
-
-func _on_card_gui_input(event: InputEvent) -> void:
-	if _is_primary_press(event):
-		_commit_card_action()
-		get_viewport().set_input_as_handled()
-
-func _on_chip_gui_input(event: InputEvent, seat_index: int) -> void:
-	if _is_primary_press(event):
-		_commit_chip_action(seat_index)
-		get_viewport().set_input_as_handled()
-
-func _is_primary_press(event: InputEvent) -> bool:
-	return (
-		event is InputEventMouseButton
-		and event.button_index == MOUSE_BUTTON_LEFT
-		and event.pressed
-	)
 
 func _on_start_hand_pressed() -> void:
 	_clear_hand_visuals()
