@@ -70,12 +70,17 @@ func _ready() -> void:
 	game.mistake_recorded.connect(_on_mistake_recorded)
 	game.hand_completed.connect(_on_hand_completed)
 
-	start_hand_button.pressed.connect(_on_start_hand_pressed)
-	advance_button.pressed.connect(_on_advance_pressed)
-	card_drag.pressed.connect(_commit_card_action)
+	# Use button_down instead of pressed. The editor's embedded game window can
+	# visually receive mouse-down while losing the release event when focus or
+	# scaling changes. Dealer actions should commit immediately on touch/click down.
+	start_hand_button.button_down.connect(_on_start_hand_pressed)
+	advance_button.button_down.connect(_on_advance_pressed)
+	card_drag.button_down.connect(_commit_card_action)
 
 	for chip_stack in chip_stacks:
-		chip_stack.pressed.connect(_commit_chip_action.bind(chip_stack.seat_index))
+		chip_stack.button_down.connect(
+			_commit_chip_action.bind(chip_stack.seat_index)
+		)
 
 	card_drag.disarm()
 	for chip_stack in chip_stacks:
