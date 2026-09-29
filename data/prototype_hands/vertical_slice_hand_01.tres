@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="PrototypeHandConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/config/prototype_hand_config.gd" id="1_config"]
+
+[resource]
+script = ExtResource("1_config")
+preflop_bets = PackedInt32Array(1200, 1000, 1600, 0, 1800, 1800)
+folded_seats = PackedInt32Array(3)
