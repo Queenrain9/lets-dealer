@@ -1,530 +1,576 @@
 extends Control
 
-const BUILD_ID: String = "interaction-runtime-v0.1"
+const BUILD_ID: String = "dealer-management-stage1-v0.2"
 
-const BG := Color("10141b")
-const PANEL := Color("191f29")
-const PANEL_2 := Color("222a36")
-const FELT := Color("183b34")
-const LINE := Color("55606e")
-const ACCENT := Color("e8b44d")
-const TEXT := Color("f2f4f7")
-const MUTED := Color("9ca7b5")
-const GOOD := Color("64d694")
-const BAD := Color("ff6f6f")
+const BG: Color = Color("0d1218")
+const PANEL: Color = Color("171e27")
+const PANEL_2: Color = Color("202936")
+const FELT: Color = Color("163d33")
+const FELT_2: Color = Color("1c4a3e")
+const LINE: Color = Color("465466")
+const ACCENT: Color = Color("e9b64c")
+const TEXT: Color = Color("f3f5f7")
+const MUTED: Color = Color("9aa7b6")
+const GOOD: Color = Color("5bd28d")
+const BAD: Color = Color("ff6d72")
+const INFO: Color = Color("67a8ff")
 
+const PLAYER_NAMES: Array[String] = ["지민", "맥스", "소연", "토니", "김사장", "찰리"]
+const PLAYER_STACKS: Array[int] = [12500, 8900, 4300, 9600, 6800, 3200]
+const BOARD_VALUES: Array[String] = ["J♣", "10♥", "7♠", "A♠", "2♦"]
 const SEAT_POSITIONS: Array[Vector2] = [
-	Vector2(40, 480),
-	Vector2(88, 290),
-	Vector2(278, 238),
-	Vector2(468, 290),
-	Vector2(516, 480),
-	Vector2(278, 650),
+	Vector2(22, 390),
+	Vector2(74, 174),
+	Vector2(250, 112),
+	Vector2(426, 174),
+	Vector2(478, 390),
+	Vector2(250, 510),
+]
+const BET_POSITIONS: Array[Vector2] = [
+	Vector2(142, 412),
+	Vector2(175, 286),
+	Vector2(284, 250),
+	Vector2(392, 286),
+	Vector2(425, 412),
+	Vector2(284, 484),
 ]
 
-const SEAT_NAMES: Array[String] = ["SEAT 1", "SEAT 2", "SEAT 3", "SEAT 4", "SEAT 5", "SEAT 6"]
-const BOARD_VALUES: Array[String] = ["A♠", "7♥", "4♣", "J♦", "2♠"]
-const BET_VALUES: Array[int] = [800, 1200, 1600, 900, 1800, 1400]
-const WINNER_SEAT: int = 2
-const SIDEPOT_WINNER_SEAT: int = 4
+var tasks: Array[DealerTask] = []
+var current_task_index: int = -1
+var time_left: float = 0.0
+var session_active: bool = false
+var resolving: bool = false
 
-var phase: String = "home"
-var drag_mode: String = ""
-var pointer_down: bool = false
-var pointer_start: Vector2 = Vector2.ZERO
-var pointer_now: Vector2 = Vector2.ZERO
-var swept_groups: Dictionary = {}
-
-var deal_index: int = 0
-var collect_round: int = 0
-var burn_done: bool = false
+var correct_actions: int = 0
 var mistakes: int = 0
 var combo: int = 0
-var perfect_actions: int = 0
-var session_started_ms: int = 0
-
-var top_status: Label
-var mission_label: Label
-var accuracy_label: Label
-var combo_label: Label
-var feedback_label: Label
+var max_combo: int = 0
+var tips: int = 0
+var cash: int = 12480
 
 var home_layer: Control
-var career_layer: Control
 var game_layer: Control
 var complete_layer: Control
 
-var table: Panel
-var deck: Panel
-var deck_label: Label
-var pot: Panel
-var pot_label: Label
-var sidepot_label: Label
-var fan_target: Panel
-var street_target: Panel
+var level_label: Label
+var cash_label: Label
+var crown_label: Label
+var accuracy_label: Label
+var combo_label: Label
+var timer_label: Label
 
-var seats: Array[Panel] = []
-var seat_titles: Array[Label] = []
-var seat_states: Array[Label] = []
-var chip_groups: Array[Panel] = []
-var chip_labels: Array[Label] = []
-var board_cards: Array[Panel] = []
+var phase_label: Label
+var headline_label: Label
+var prompt_label: Label
+var feedback_label: Label
+
+var table: Panel
+var pot_panel: Panel
+var main_pot_label: Label
+var side_pot_label: Label
+var request_panel: Panel
+var request_label: Label
+var showdown_panel: Panel
+var showdown_label: Label
+
+var seat_panels: Array[Panel] = []
+var seat_name_labels: Array[Label] = []
+var seat_stack_labels: Array[Label] = []
+var seat_state_labels: Array[Label] = []
+var bet_panels: Array[Panel] = []
+var bet_labels: Array[Label] = []
+var board_panels: Array[Panel] = []
 var board_labels: Array[Label] = []
 
-var drag_proxy: Panel
-var drag_proxy_label: Label
+var choice_buttons: Array[Button] = []
+var history_labels: Array[Label] = []
 
 
 func _ready() -> void:
-	set_process_input(true)
 	_build_ui()
 	_show_home()
 
 
-func _build_ui() -> void:
-	var background := ColorRect.new()
-	background.color = BG
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(background)
+func _process(delta: float) -> void:
+	if not session_active or resolving or current_task_index < 0:
+		return
 
-	_build_top_hud()
+	time_left = maxf(time_left - delta, 0.0)
+	_refresh_timer()
+
+	if time_left <= 0.0:
+		_handle_timeout()
+
+
+func _build_ui() -> void:
+	var bg := ColorRect.new()
+	bg.color = BG
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
+
+	_build_top_bar()
 	_build_home()
-	_build_career()
 	_build_game()
 	_build_complete()
 	_build_feedback()
 
 
-func _build_top_hud() -> void:
-	var top_bar := Panel.new()
-	top_bar.position = Vector2(18, 18)
-	top_bar.size = Vector2(684, 76)
-	top_bar.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 14))
-	add_child(top_bar)
+func _build_top_bar() -> void:
+	var top := Panel.new()
+	top.position = Vector2(18, 16)
+	top.size = Vector2(684, 76)
+	top.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 15))
+	add_child(top)
 
 	var title := Label.new()
-	title.position = Vector2(18, 10)
-	title.size = Vector2(360, 28)
+	title.position = Vector2(16, 8)
+	title.size = Vector2(180, 25)
 	title.text = "LET'S DEALER"
-	title.add_theme_font_size_override("font_size", 23)
+	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", TEXT)
-	top_bar.add_child(title)
+	top.add_child(title)
 
-	top_status = Label.new()
-	top_status.position = Vector2(18, 42)
-	top_status.size = Vector2(360, 20)
-	top_status.text = "INTERACTION PROTOTYPE"
-	top_status.add_theme_font_size_override("font_size", 12)
-	top_status.add_theme_color_override("font_color", MUTED)
-	top_bar.add_child(top_status)
+	level_label = Label.new()
+	level_label.position = Vector2(16, 39)
+	level_label.size = Vector2(230, 22)
+	level_label.text = "LV.1  신입 딜러"
+	level_label.add_theme_font_size_override("font_size", 13)
+	level_label.add_theme_color_override("font_color", MUTED)
+	top.add_child(level_label)
+
+	cash_label = Label.new()
+	cash_label.position = Vector2(260, 13)
+	cash_label.size = Vector2(120, 22)
+	cash_label.text = "TIP  12,480"
+	cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cash_label.add_theme_color_override("font_color", ACCENT)
+	top.add_child(cash_label)
+
+	crown_label = Label.new()
+	crown_label.position = Vector2(260, 42)
+	crown_label.size = Vector2(120, 20)
+	crown_label.text = "REP  120"
+	crown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	crown_label.add_theme_color_override("font_color", MUTED)
+	top.add_child(crown_label)
 
 	accuracy_label = Label.new()
-	accuracy_label.position = Vector2(440, 13)
-	accuracy_label.size = Vector2(110, 22)
+	accuracy_label.position = Vector2(398, 10)
+	accuracy_label.size = Vector2(90, 24)
 	accuracy_label.text = "ACC 100%"
 	accuracy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	accuracy_label.add_theme_color_override("font_color", TEXT)
-	top_bar.add_child(accuracy_label)
+	top.add_child(accuracy_label)
 
 	combo_label = Label.new()
-	combo_label.position = Vector2(550, 13)
-	combo_label.size = Vector2(110, 22)
+	combo_label.position = Vector2(496, 10)
+	combo_label.size = Vector2(88, 24)
 	combo_label.text = "COMBO x0"
 	combo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	combo_label.add_theme_color_override("font_color", ACCENT)
-	top_bar.add_child(combo_label)
+	top.add_child(combo_label)
 
-	mission_label = Label.new()
-	mission_label.position = Vector2(440, 42)
-	mission_label.size = Vector2(220, 22)
-	mission_label.text = "READY"
-	mission_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	mission_label.add_theme_color_override("font_color", MUTED)
-	top_bar.add_child(mission_label)
+	timer_label = Label.new()
+	timer_label.position = Vector2(596, 9)
+	timer_label.size = Vector2(70, 50)
+	timer_label.text = "00:00"
+	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	timer_label.add_theme_font_size_override("font_size", 18)
+	timer_label.add_theme_color_override("font_color", GOOD)
+	top.add_child(timer_label)
 
 
 func _build_home() -> void:
 	home_layer = Control.new()
-	home_layer.position = Vector2(0, 110)
-	home_layer.size = Vector2(720, 1170)
+	home_layer.position = Vector2(0, 104)
+	home_layer.size = Vector2(720, 1176)
 	add_child(home_layer)
 
 	var hero := Panel.new()
-	hero.position = Vector2(32, 44)
-	hero.size = Vector2(656, 430)
-	hero.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 22))
+	hero.position = Vector2(24, 36)
+	hero.size = Vector2(672, 450)
+	hero.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 24))
 	home_layer.add_child(hero)
 
-	var eyebrow := Label.new()
-	eyebrow.position = Vector2(28, 28)
-	eyebrow.size = Vector2(600, 24)
-	eyebrow.text = "SHIFT 01 · ROOKIE TABLE"
-	eyebrow.add_theme_color_override("font_color", ACCENT)
-	eyebrow.add_theme_font_size_override("font_size", 13)
-	hero.add_child(eyebrow)
+	var badge := Label.new()
+	badge.position = Vector2(24, 22)
+	badge.size = Vector2(620, 26)
+	badge.text = "ROOKIE HALL · SHIFT 01"
+	badge.add_theme_color_override("font_color", ACCENT)
+	badge.add_theme_font_size_override("font_size", 13)
+	hero.add_child(badge)
 
 	var h1 := Label.new()
-	h1.position = Vector2(28, 76)
-	h1.size = Vector2(600, 110)
-	h1.text = "RUN THE TABLE\nLIKE A REAL DEALER"
-	h1.add_theme_font_size_override("font_size", 34)
+	h1.position = Vector2(24, 76)
+	h1.size = Vector2(620, 105)
+	h1.text = "테이블을 읽고\n딜러 업무를 처리하세요"
+	h1.add_theme_font_size_override("font_size", 31)
 	h1.add_theme_color_override("font_color", TEXT)
 	hero.add_child(h1)
 
 	var desc := Label.new()
-	desc.position = Vector2(28, 205)
-	desc.size = Vector2(600, 84)
-	desc.text = "Deal → sweep bets → burn & open board → payout.\nEvery action is direct manipulation. No wireframe images are used at runtime."
+	desc.position = Vector2(24, 204)
+	desc.size = Vector2(620, 105)
+	desc.text = "정확한 좌표에 카드를 놓는 게임이 아닙니다.\n손님과 베팅 상태를 보고 지금 해야 할 일을 판단하세요."
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.add_theme_font_size_override("font_size", 16)
 	desc.add_theme_color_override("font_color", MUTED)
 	hero.add_child(desc)
 
-	var start_button := Button.new()
-	start_button.position = Vector2(28, 322)
-	start_button.size = Vector2(390, 76)
-	start_button.text = "START SHIFT"
-	start_button.add_theme_font_size_override("font_size", 20)
-	start_button.add_theme_stylebox_override("normal", _style(ACCENT, ACCENT, 0, 14))
-	start_button.add_theme_color_override("font_color", Color("20170a"))
-	start_button.pressed.connect(_start_shift)
-	hero.add_child(start_button)
+	var start := Button.new()
+	start.position = Vector2(24, 336)
+	start.size = Vector2(624, 78)
+	start.text = "첫 근무 시작"
+	start.add_theme_font_size_override("font_size", 20)
+	start.add_theme_stylebox_override("normal", _style(ACCENT, ACCENT, 0, 16))
+	start.add_theme_color_override("font_color", Color("261b08"))
+	start.pressed.connect(_start_shift)
+	hero.add_child(start)
 
-	var career_button := Button.new()
-	career_button.position = Vector2(432, 322)
-	career_button.size = Vector2(196, 76)
-	career_button.text = "CAREER"
-	career_button.add_theme_stylebox_override("normal", _style(PANEL_2, LINE, 1, 14))
-	career_button.add_theme_color_override("font_color", TEXT)
-	career_button.pressed.connect(_show_career)
-	hero.add_child(career_button)
+	var preview := Panel.new()
+	preview.position = Vector2(24, 514)
+	preview.size = Vector2(672, 356)
+	preview.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 20))
+	home_layer.add_child(preview)
 
-	var checklist := Panel.new()
-	checklist.position = Vector2(32, 506)
-	checklist.size = Vector2(656, 310)
-	checklist.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 18))
-	home_layer.add_child(checklist)
+	var ptitle := Label.new()
+	ptitle.position = Vector2(20, 18)
+	ptitle.size = Vector2(620, 28)
+	ptitle.text = "이번 근무에서 생기는 일"
+	ptitle.add_theme_font_size_override("font_size", 18)
+	ptitle.add_theme_color_override("font_color", TEXT)
+	preview.add_child(ptitle)
 
-	var ctitle := Label.new()
-	ctitle.position = Vector2(24, 20)
-	ctitle.size = Vector2(600, 28)
-	ctitle.text = "TODAY'S DEALER LOOP"
-	ctitle.add_theme_color_override("font_color", TEXT)
-	ctitle.add_theme_font_size_override("font_size", 18)
-	checklist.add_child(ctitle)
-
-	var lines := [
-		"01  DEAL              card → correct seat",
-		"02  COLLECT           one continuous sweep → POT",
-		"03  BOARD             burn flick → flop packet / single open",
-		"04  PAYOUT            POT → winning seat",
-		"05  SIDE POT          only eligible seat receives it",
+	var lines: Array[String] = [
+		"카드 배분 → 베팅 회수",
+		"ALL IN 금액 차이 → 사이드팟 판단",
+		"플랍 진행 중 손님의 칩 교환 요청",
+		"턴 / 리버 진행과 추가 베팅 정리",
+		"쇼다운 → 메인팟 / 사이드팟 각각 지급",
 	]
 	for i in range(lines.size()):
-		var l := Label.new()
-		l.position = Vector2(24, 70 + i * 43)
-		l.size = Vector2(600, 30)
-		l.text = lines[i]
-		l.add_theme_color_override("font_color", MUTED if i > 0 else ACCENT)
-		l.add_theme_font_size_override("font_size", 15)
-		checklist.add_child(l)
-
-
-func _build_career() -> void:
-	career_layer = Control.new()
-	career_layer.position = Vector2(0, 110)
-	career_layer.size = Vector2(720, 1170)
-	career_layer.visible = false
-	add_child(career_layer)
-
-	var title := Label.new()
-	title.position = Vector2(32, 42)
-	title.size = Vector2(500, 40)
-	title.text = "CAREER TABLES"
-	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_color_override("font_color", TEXT)
-	career_layer.add_child(title)
-
-	var back := Button.new()
-	back.position = Vector2(566, 34)
-	back.size = Vector2(122, 54)
-	back.text = "HOME"
-	back.pressed.connect(_show_home)
-	career_layer.add_child(back)
-
-	_make_venue_card(career_layer, Vector2(32, 126), "ROOKIE HALL", "OPEN", true, _start_shift)
-	_make_venue_card(career_layer, Vector2(32, 336), "VIP ROOM", "LOCKED · PERFECT 3 SHIFTS", false, Callable())
-	_make_venue_card(career_layer, Vector2(32, 546), "FINAL TABLE", "LOCKED · VIP CLEAR", false, Callable())
-
-
-func _make_venue_card(parent: Control, pos: Vector2, venue_name: String, state_text: String, unlocked: bool, action: Callable) -> void:
-	var card := Panel.new()
-	card.position = pos
-	card.size = Vector2(656, 174)
-	card.add_theme_stylebox_override("panel", _style(PANEL if unlocked else Color("141922"), ACCENT if unlocked else LINE, 2 if unlocked else 1, 18))
-	parent.add_child(card)
-
-	var name_label := Label.new()
-	name_label.position = Vector2(24, 22)
-	name_label.size = Vector2(390, 34)
-	name_label.text = venue_name
-	name_label.add_theme_font_size_override("font_size", 23)
-	name_label.add_theme_color_override("font_color", TEXT if unlocked else MUTED)
-	card.add_child(name_label)
-
-	var state_label := Label.new()
-	state_label.position = Vector2(24, 72)
-	state_label.size = Vector2(500, 28)
-	state_label.text = state_text
-	state_label.add_theme_color_override("font_color", ACCENT if unlocked else MUTED)
-	card.add_child(state_label)
-
-	var button := Button.new()
-	button.position = Vector2(462, 52)
-	button.size = Vector2(164, 68)
-	button.text = "ENTER" if unlocked else "LOCKED"
-	button.disabled = not unlocked
-	card.add_child(button)
-	if unlocked and action.is_valid():
-		button.pressed.connect(action)
+		var item := Label.new()
+		item.position = Vector2(22, 72 + i * 51)
+		item.size = Vector2(620, 34)
+		item.text = "0%d   %s" % [i + 1, lines[i]]
+		item.add_theme_font_size_override("font_size", 15)
+		item.add_theme_color_override("font_color", ACCENT if i == 0 else MUTED)
+		preview.add_child(item)
 
 
 func _build_game() -> void:
 	game_layer = Control.new()
-	game_layer.position = Vector2(0, 110)
-	game_layer.size = Vector2(720, 1170)
+	game_layer.position = Vector2(0, 104)
+	game_layer.size = Vector2(720, 1176)
 	game_layer.visible = false
 	add_child(game_layer)
 
+	_build_mission_panel()
+	_build_table()
+	_build_decision_panel()
+	_build_history_panel()
+
+
+func _build_mission_panel() -> void:
+	var mission := Panel.new()
+	mission.position = Vector2(24, 10)
+	mission.size = Vector2(672, 118)
+	mission.add_theme_stylebox_override("panel", _style(PANEL, INFO, 2, 17))
+	game_layer.add_child(mission)
+
+	phase_label = Label.new()
+	phase_label.position = Vector2(18, 12)
+	phase_label.size = Vector2(120, 24)
+	phase_label.text = "PREFLOP"
+	phase_label.add_theme_color_override("font_color", INFO)
+	phase_label.add_theme_font_size_override("font_size", 12)
+	mission.add_child(phase_label)
+
+	headline_label = Label.new()
+	headline_label.position = Vector2(18, 38)
+	headline_label.size = Vector2(636, 28)
+	headline_label.text = "현재 미션"
+	headline_label.add_theme_font_size_override("font_size", 18)
+	headline_label.add_theme_color_override("font_color", TEXT)
+	mission.add_child(headline_label)
+
+	prompt_label = Label.new()
+	prompt_label.position = Vector2(18, 70)
+	prompt_label.size = Vector2(636, 38)
+	prompt_label.text = ""
+	prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	prompt_label.add_theme_font_size_override("font_size", 13)
+	prompt_label.add_theme_color_override("font_color", MUTED)
+	mission.add_child(prompt_label)
+
+
+func _build_table() -> void:
 	table = Panel.new()
-	table.position = Vector2(28, 92)
-	table.size = Vector2(664, 760)
-	table.add_theme_stylebox_override("panel", _style(FELT, Color("745b33"), 6, 54))
+	table.position = Vector2(34, 148)
+	table.size = Vector2(652, 628)
+	table.add_theme_stylebox_override("panel", _style(FELT, Color("755b32"), 6, 54))
 	game_layer.add_child(table)
 
 	for i in range(6):
 		_create_seat(i)
 
 	_create_board()
-	_create_pot()
-	_create_bet_groups()
-	_create_deck()
-	_create_drag_proxy()
-
-	var hint := Label.new()
-	hint.position = Vector2(32, 884)
-	hint.size = Vector2(656, 84)
-	hint.name = "Hint"
-	hint.text = "Drag from the deck to the highlighted seat."
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_color_override("font_color", MUTED)
-	hint.add_theme_font_size_override("font_size", 16)
-	game_layer.add_child(hint)
-
-	var quit_button := Button.new()
-	quit_button.position = Vector2(32, 1000)
-	quit_button.size = Vector2(140, 56)
-	quit_button.text = "END SHIFT"
-	quit_button.pressed.connect(_show_home)
-	game_layer.add_child(quit_button)
+	_create_pots()
+	_create_request_panel()
+	_create_showdown_panel()
+	_create_bets()
 
 
 func _create_seat(index: int) -> void:
 	var seat := Panel.new()
 	seat.position = SEAT_POSITIONS[index]
-	seat.size = Vector2(108, 112)
+	seat.size = Vector2(154, 104)
 	seat.add_theme_stylebox_override("panel", _style(PANEL, LINE, 2, 14))
 	table.add_child(seat)
-	seats.append(seat)
+	seat_panels.append(seat)
 
-	var n := Label.new()
-	n.position = Vector2(8, 10)
-	n.size = Vector2(92, 24)
-	n.text = SEAT_NAMES[index]
-	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	n.add_theme_font_size_override("font_size", 13)
-	n.add_theme_color_override("font_color", TEXT)
-	seat.add_child(n)
-	seat_titles.append(n)
+	var name_label := Label.new()
+	name_label.position = Vector2(8, 7)
+	name_label.size = Vector2(138, 23)
+	name_label.text = PLAYER_NAMES[index]
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 15)
+	name_label.add_theme_color_override("font_color", TEXT)
+	seat.add_child(name_label)
+	seat_name_labels.append(name_label)
 
-	var s := Label.new()
-	s.position = Vector2(6, 40)
-	s.size = Vector2(96, 58)
-	s.text = "WAIT\n□ □"
-	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	s.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	s.add_theme_font_size_override("font_size", 13)
-	s.add_theme_color_override("font_color", MUTED)
-	seat.add_child(s)
-	seat_states.append(s)
+	var stack_label := Label.new()
+	stack_label.position = Vector2(8, 30)
+	stack_label.size = Vector2(138, 22)
+	stack_label.text = "%s" % _format_amount(PLAYER_STACKS[index])
+	stack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stack_label.add_theme_font_size_override("font_size", 13)
+	stack_label.add_theme_color_override("font_color", ACCENT)
+	seat.add_child(stack_label)
+	seat_stack_labels.append(stack_label)
+
+	var state_label := Label.new()
+	state_label.position = Vector2(8, 56)
+	state_label.size = Vector2(138, 38)
+	state_label.text = "WAIT"
+	state_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	state_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	state_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	state_label.add_theme_font_size_override("font_size", 12)
+	state_label.add_theme_color_override("font_color", MUTED)
+	seat.add_child(state_label)
+	seat_state_labels.append(state_label)
 
 
 func _create_board() -> void:
-	fan_target = Panel.new()
-	fan_target.position = Vector2(188, 252)
-	fan_target.size = Vector2(288, 126)
-	fan_target.add_theme_stylebox_override("panel", _style(Color("15352f"), Color("315f55"), 2, 18))
-	table.add_child(fan_target)
-
-	var fan_label := Label.new()
-	fan_label.position = Vector2(0, 4)
-	fan_label.size = Vector2(288, 24)
-	fan_label.text = "BOARD / FAN AREA"
-	fan_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fan_label.add_theme_font_size_override("font_size", 11)
-	fan_label.add_theme_color_override("font_color", MUTED)
-	fan_target.add_child(fan_label)
+	var board_bg := Panel.new()
+	board_bg.position = Vector2(166, 258)
+	board_bg.size = Vector2(320, 104)
+	board_bg.add_theme_stylebox_override("panel", _style(FELT_2, Color("346859"), 1, 18))
+	table.add_child(board_bg)
 
 	for i in range(5):
-		var c := Panel.new()
-		c.position = Vector2(17 + i * 52, 38)
-		c.size = Vector2(44, 70)
-		c.visible = false
-		c.add_theme_stylebox_override("panel", _style(Color("f3efe6"), Color("cab176"), 2, 7))
-		fan_target.add_child(c)
-		board_cards.append(c)
+		var card := Panel.new()
+		card.position = Vector2(15 + i * 61, 18)
+		card.size = Vector2(50, 70)
+		card.visible = false
+		card.add_theme_stylebox_override("panel", _style(Color("f1eee5"), Color("c8ac70"), 2, 7))
+		board_bg.add_child(card)
+		board_panels.append(card)
 
-		var l := Label.new()
-		l.position = Vector2(0, 0)
-		l.size = c.size
-		l.text = BOARD_VALUES[i]
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		l.add_theme_color_override("font_color", Color("161a1f"))
-		l.add_theme_font_size_override("font_size", 15)
-		c.add_child(l)
-		board_labels.append(l)
-
-	street_target = Panel.new()
-	street_target.position = Vector2(474, 252)
-	street_target.size = Vector2(88, 126)
-	street_target.visible = false
-	street_target.add_theme_stylebox_override("panel", _style(Color("173a33"), ACCENT, 2, 16))
-	table.add_child(street_target)
+		var label := Label.new()
+		label.position = Vector2.ZERO
+		label.size = card.size
+		label.text = BOARD_VALUES[i]
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 15)
+		label.add_theme_color_override("font_color", Color("171b20"))
+		card.add_child(label)
+		board_labels.append(label)
 
 
-func _create_pot() -> void:
-	pot = Panel.new()
-	pot.position = Vector2(252, 412)
-	pot.size = Vector2(160, 88)
-	pot.add_theme_stylebox_override("panel", _style(Color("202832"), ACCENT, 2, 44))
-	table.add_child(pot)
+func _create_pots() -> void:
+	pot_panel = Panel.new()
+	pot_panel.position = Vector2(218, 384)
+	pot_panel.size = Vector2(216, 92)
+	pot_panel.pivot_offset = pot_panel.size * 0.5
+	pot_panel.add_theme_stylebox_override("panel", _style(Color("1d2630"), ACCENT, 2, 24))
+	table.add_child(pot_panel)
 
-	pot_label = Label.new()
-	pot_label.position = Vector2(0, 10)
-	pot_label.size = Vector2(160, 30)
-	pot_label.text = "POT"
-	pot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pot_label.add_theme_color_override("font_color", ACCENT)
-	pot_label.add_theme_font_size_override("font_size", 18)
-	pot.add_child(pot_label)
+	main_pot_label = Label.new()
+	main_pot_label.position = Vector2(8, 10)
+	main_pot_label.size = Vector2(200, 30)
+	main_pot_label.text = "MAIN POT  0"
+	main_pot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	main_pot_label.add_theme_color_override("font_color", ACCENT)
+	main_pot_label.add_theme_font_size_override("font_size", 16)
+	pot_panel.add_child(main_pot_label)
 
-	sidepot_label = Label.new()
-	sidepot_label.position = Vector2(0, 42)
-	sidepot_label.size = Vector2(160, 24)
-	sidepot_label.text = "0"
-	sidepot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sidepot_label.add_theme_color_override("font_color", TEXT)
-	pot.add_child(sidepot_label)
+	side_pot_label = Label.new()
+	side_pot_label.position = Vector2(8, 48)
+	side_pot_label.size = Vector2(200, 28)
+	side_pot_label.text = "SIDE POT  0"
+	side_pot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	side_pot_label.add_theme_color_override("font_color", TEXT)
+	side_pot_label.add_theme_font_size_override("font_size", 14)
+	pot_panel.add_child(side_pot_label)
 
 
-func _create_bet_groups() -> void:
-	var positions: Array[Vector2] = [
-		Vector2(150, 490),
-		Vector2(174, 344),
-		Vector2(286, 326),
-		Vector2(402, 344),
-		Vector2(426, 490),
-		Vector2(286, 588),
-	]
+func _create_request_panel() -> void:
+	request_panel = Panel.new()
+	request_panel.position = Vector2(440, 500)
+	request_panel.size = Vector2(184, 76)
+	request_panel.visible = false
+	request_panel.add_theme_stylebox_override("panel", _style(Color("282136"), Color("a77fe8"), 2, 13))
+	table.add_child(request_panel)
+
+	request_label = Label.new()
+	request_label.position = Vector2(8, 7)
+	request_label.size = Vector2(168, 62)
+	request_label.text = ""
+	request_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	request_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	request_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	request_label.add_theme_font_size_override("font_size", 11)
+	request_label.add_theme_color_override("font_color", TEXT)
+	request_panel.add_child(request_label)
+
+
+func _create_showdown_panel() -> void:
+	showdown_panel = Panel.new()
+	showdown_panel.position = Vector2(18, 500)
+	showdown_panel.size = Vector2(220, 94)
+	showdown_panel.visible = false
+	showdown_panel.add_theme_stylebox_override("panel", _style(Color("151e27"), LINE, 1, 13))
+	table.add_child(showdown_panel)
+
+	showdown_label = Label.new()
+	showdown_label.position = Vector2(8, 6)
+	showdown_label.size = Vector2(204, 82)
+	showdown_label.text = ""
+	showdown_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	showdown_label.add_theme_font_size_override("font_size", 11)
+	showdown_label.add_theme_color_override("font_color", MUTED)
+	showdown_panel.add_child(showdown_label)
+
+
+func _create_bets() -> void:
 	for i in range(6):
-		var chip := Panel.new()
-		chip.position = positions[i]
-		chip.size = Vector2(80, 42)
-		chip.visible = false
-		chip.add_theme_stylebox_override("panel", _style(Color("6d4b17"), ACCENT, 2, 21))
-		table.add_child(chip)
-		chip_groups.append(chip)
+		var bet := Panel.new()
+		bet.position = BET_POSITIONS[i]
+		bet.size = Vector2(84, 34)
+		bet.visible = false
+		bet.add_theme_stylebox_override("panel", _style(Color("6a4818"), ACCENT, 1, 17))
+		table.add_child(bet)
+		bet_panels.append(bet)
 
-		var l := Label.new()
-		l.position = Vector2(0, 0)
-		l.size = chip.size
-		l.text = str(BET_VALUES[i])
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		l.add_theme_color_override("font_color", TEXT)
-		l.add_theme_font_size_override("font_size", 12)
-		chip.add_child(l)
-		chip_labels.append(l)
-
-
-func _create_deck() -> void:
-	deck = Panel.new()
-	deck.position = Vector2(272, 896)
-	deck.size = Vector2(176, 128)
-	deck.add_theme_stylebox_override("panel", _style(Color("27313f"), ACCENT, 3, 16))
-	game_layer.add_child(deck)
-
-	deck_label = Label.new()
-	deck_label.position = Vector2(0, 0)
-	deck_label.size = deck.size
-	deck_label.text = "DECK\nDRAG CARD"
-	deck_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	deck_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	deck_label.add_theme_color_override("font_color", TEXT)
-	deck_label.add_theme_font_size_override("font_size", 17)
-	deck.add_child(deck_label)
+		var label := Label.new()
+		label.position = Vector2.ZERO
+		label.size = bet.size
+		label.text = "0"
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 11)
+		label.add_theme_color_override("font_color", TEXT)
+		bet.add_child(label)
+		bet_labels.append(label)
 
 
-func _create_drag_proxy() -> void:
-	drag_proxy = Panel.new()
-	drag_proxy.size = Vector2(76, 104)
-	drag_proxy.visible = false
-	drag_proxy.z_index = 100
-	drag_proxy.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	drag_proxy.add_theme_stylebox_override("panel", _style(Color("f3efe6"), ACCENT, 2, 10))
-	game_layer.add_child(drag_proxy)
+func _build_decision_panel() -> void:
+	var panel := Panel.new()
+	panel.position = Vector2(24, 794)
+	panel.size = Vector2(672, 230)
+	panel.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 18))
+	game_layer.add_child(panel)
 
-	drag_proxy_label = Label.new()
-	drag_proxy_label.position = Vector2(0, 0)
-	drag_proxy_label.size = drag_proxy.size
-	drag_proxy_label.text = "CARD"
-	drag_proxy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	drag_proxy_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	drag_proxy_label.add_theme_color_override("font_color", Color("15191e"))
-	drag_proxy_label.add_theme_font_size_override("font_size", 14)
-	drag_proxy.add_child(drag_proxy_label)
+	var title := Label.new()
+	title.position = Vector2(18, 12)
+	title.size = Vector2(636, 24)
+	title.text = "지금 해야 할 딜러 업무를 선택하세요"
+	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_color_override("font_color", MUTED)
+	panel.add_child(title)
+
+	for i in range(3):
+		var button := Button.new()
+		button.position = Vector2(18, 52 + i * 54)
+		button.size = Vector2(636, 46)
+		button.text = "-"
+		button.add_theme_font_size_override("font_size", 15)
+		button.add_theme_stylebox_override("normal", _style(PANEL_2, LINE, 1, 12))
+		button.add_theme_stylebox_override("hover", _style(Color("283446"), ACCENT, 1, 12))
+		button.add_theme_stylebox_override("pressed", _style(Color("33270f"), ACCENT, 2, 12))
+		button.add_theme_color_override("font_color", TEXT)
+		button.pressed.connect(_on_choice_pressed.bind(i))
+		panel.add_child(button)
+		choice_buttons.append(button)
+
+
+func _build_history_panel() -> void:
+	var panel := Panel.new()
+	panel.position = Vector2(24, 1042)
+	panel.size = Vector2(672, 116)
+	panel.add_theme_stylebox_override("panel", _style(Color("111820"), LINE, 1, 15))
+	game_layer.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(14, 8)
+	title.size = Vector2(120, 20)
+	title.text = "SHIFT LOG"
+	title.add_theme_font_size_override("font_size", 11)
+	title.add_theme_color_override("font_color", MUTED)
+	panel.add_child(title)
+
+	for i in range(3):
+		var line := Label.new()
+		line.position = Vector2(14, 32 + i * 25)
+		line.size = Vector2(644, 22)
+		line.text = "—"
+		line.add_theme_font_size_override("font_size", 11)
+		line.add_theme_color_override("font_color", MUTED)
+		panel.add_child(line)
+		history_labels.append(line)
 
 
 func _build_complete() -> void:
 	complete_layer = Control.new()
-	complete_layer.position = Vector2(0, 110)
-	complete_layer.size = Vector2(720, 1170)
+	complete_layer.position = Vector2(0, 104)
+	complete_layer.size = Vector2(720, 1176)
 	complete_layer.visible = false
 	add_child(complete_layer)
 
 	var panel := Panel.new()
-	panel.position = Vector2(52, 184)
-	panel.size = Vector2(616, 544)
+	panel.position = Vector2(46, 130)
+	panel.size = Vector2(628, 610)
 	panel.add_theme_stylebox_override("panel", _style(PANEL, ACCENT, 2, 24))
 	complete_layer.add_child(panel)
 
 	var title := Label.new()
-	title.position = Vector2(28, 36)
-	title.size = Vector2(560, 60)
+	title.position = Vector2(24, 34)
+	title.size = Vector2(580, 50)
 	title.text = "SHIFT COMPLETE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 32)
+	title.add_theme_font_size_override("font_size", 30)
 	title.add_theme_color_override("font_color", ACCENT)
 	panel.add_child(title)
 
+	var subtitle := Label.new()
+	subtitle.position = Vector2(24, 95)
+	subtitle.size = Vector2(580, 40)
+	subtitle.text = "신입 딜러 첫 근무 완료"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size", 16)
+	subtitle.add_theme_color_override("font_color", MUTED)
+	panel.add_child(subtitle)
+
 	var result := Label.new()
 	result.name = "Result"
-	result.position = Vector2(48, 132)
-	result.size = Vector2(520, 180)
+	result.position = Vector2(54, 170)
+	result.size = Vector2(520, 235)
+	result.text = ""
 	result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	result.add_theme_font_size_override("font_size", 19)
@@ -532,15 +578,18 @@ func _build_complete() -> void:
 	panel.add_child(result)
 
 	var replay := Button.new()
-	replay.position = Vector2(48, 366)
-	replay.size = Vector2(248, 76)
-	replay.text = "NEXT SHIFT"
+	replay.position = Vector2(54, 452)
+	replay.size = Vector2(520, 70)
+	replay.text = "다시 근무하기"
+	replay.add_theme_font_size_override("font_size", 18)
+	replay.add_theme_stylebox_override("normal", _style(ACCENT, ACCENT, 0, 14))
+	replay.add_theme_color_override("font_color", Color("261b08"))
 	replay.pressed.connect(_start_shift)
 	panel.add_child(replay)
 
 	var home := Button.new()
-	home.position = Vector2(320, 366)
-	home.size = Vector2(248, 76)
+	home.position = Vector2(54, 538)
+	home.size = Vector2(520, 50)
 	home.text = "HOME"
 	home.pressed.connect(_show_home)
 	panel.add_child(home)
@@ -548,551 +597,385 @@ func _build_complete() -> void:
 
 func _build_feedback() -> void:
 	feedback_label = Label.new()
-	feedback_label.z_index = 200
+	feedback_label.position = Vector2(210, 510)
+	feedback_label.size = Vector2(300, 54)
 	feedback_label.visible = false
-	feedback_label.size = Vector2(220, 40)
+	feedback_label.z_index = 200
 	feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	feedback_label.add_theme_stylebox_override("normal", _style(Color("11161dcc"), LINE, 1, 10))
-	feedback_label.add_theme_font_size_override("font_size", 13)
+	feedback_label.add_theme_font_size_override("font_size", 17)
+	feedback_label.add_theme_stylebox_override("normal", _style(Color("10161de8"), LINE, 1, 14))
 	add_child(feedback_label)
 
 
-func _input(event: InputEvent) -> void:
-	if not game_layer.visible:
-		return
-
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.pressed:
-			_pointer_begin(mouse_event.position)
-		else:
-			_pointer_end(mouse_event.position)
-	elif event is InputEventMouseMotion and pointer_down:
-		var motion := event as InputEventMouseMotion
-		_pointer_move(motion.position)
-	elif event is InputEventScreenTouch:
-		var touch := event as InputEventScreenTouch
-		if touch.pressed:
-			_pointer_begin(touch.position)
-		else:
-			_pointer_end(touch.position)
-	elif event is InputEventScreenDrag and pointer_down:
-		var drag := event as InputEventScreenDrag
-		_pointer_move(drag.position)
-
-
-func _pointer_begin(p: Vector2) -> void:
-	pointer_down = true
-	pointer_start = p
-	pointer_now = p
-	swept_groups.clear()
-	drag_mode = ""
-
-	if _deck_rect().has_point(p):
-		match phase:
-			"deal":
-				drag_mode = "deal_card"
-				_begin_proxy("CARD", Vector2(76, 104), p)
-			"flop_burn", "turn_burn", "river_burn":
-				drag_mode = "burn"
-				_begin_proxy("BURN", Vector2(68, 94), p)
-			"flop_packet":
-				drag_mode = "flop_packet"
-				_begin_proxy("3-CARD\nPACKET", Vector2(138, 96), p)
-			"turn_card", "river_card":
-				drag_mode = "street_card"
-				_begin_proxy("CARD", Vector2(76, 104), p)
-	elif phase == "collect" and _table_rect().has_point(p):
-		drag_mode = "sweep"
-		_track_sweep(p)
-	elif (phase == "payout" or phase == "sidepot") and _pot_rect().has_point(p):
-		drag_mode = "payout"
-		_begin_proxy("CHIPS", Vector2(100, 60), p)
-
-
-func _pointer_move(p: Vector2) -> void:
-	pointer_now = p
-	if drag_mode == "sweep":
-		_track_sweep(p)
-		_show_feedback("SWEEP", p, ACCENT, 0.08)
-	elif drag_proxy.visible:
-		drag_proxy.position = p - drag_proxy.size * 0.5
-		_update_target_highlights(p)
-
-
-func _pointer_end(p: Vector2) -> void:
-	if not pointer_down:
-		return
-	pointer_down = false
-	pointer_now = p
-
-	match drag_mode:
-		"deal_card":
-			_resolve_deal(p)
-		"sweep":
-			_resolve_collect(p)
-		"burn":
-			_resolve_burn(p)
-		"flop_packet":
-			_resolve_flop_packet(p)
-		"street_card":
-			_resolve_street_card(p)
-		"payout":
-			_resolve_payout(p)
-		_:
-			_hide_proxy()
-
-	drag_mode = ""
-	_clear_target_highlights()
-
-
-func _resolve_deal(p: Vector2) -> void:
-	var expected := deal_index % 6
-	if _seat_rect(expected).grow(18).has_point(p):
-		_hide_proxy()
-		perfect_actions += 1
-		combo += 1
-		var cards_for_seat := int(deal_index / 6) + 1
-		seat_states[expected].text = "DEALT\n" + ("■ " if cards_for_seat >= 1 else "□ ") + ("■" if cards_for_seat >= 2 else "□")
-		_flash_seat(expected, GOOD)
-		_show_feedback("GOOD DEAL", _seat_center(expected), GOOD)
-		deal_index += 1
-		if deal_index >= 12:
-			await get_tree().create_timer(0.25).timeout
-			_enter_collect()
-		else:
-			_refresh_deal_target()
-	else:
-		_fail_action("WRONG SEAT", p, _deck_rect().get_center())
-
-
-func _enter_collect() -> void:
-	phase = "collect"
-	burn_done = false
-	_show_bets(true)
-	pot_label.text = "POT"
-	sidepot_label.text = _format_amount(_current_pot_total())
-	_set_hint("Sweep through multiple BetChipGroups, then finish inside POT.")
-	mission_label.text = "COLLECT · SWEEP"
-	top_status.text = "NPC BETTING COMPLETE"
-	_clear_seat_targets()
-
-
-func _track_sweep(p: Vector2) -> void:
-	for i in range(chip_groups.size()):
-		if chip_groups[i].visible and _chip_rect(i).grow(18).has_point(p):
-			swept_groups[i] = true
-			chip_groups[i].modulate = Color(1.25, 1.25, 1.25, 1.0)
-
-
-func _resolve_collect(p: Vector2) -> void:
-	var reached_pot := _pot_rect().grow(24).has_point(p)
-	if reached_pot and swept_groups.size() >= 2:
-		perfect_actions += 1
-		combo += 1
-		_show_feedback("POT ABSORB", _pot_rect().get_center(), GOOD)
-		for chip in chip_groups:
-			chip.visible = false
-			chip.modulate = Color.WHITE
-		collect_round += 1
-		await get_tree().create_timer(0.25).timeout
-		match collect_round:
-			1:
-				_enter_flop_burn()
-			2:
-				_enter_turn_burn()
-			3:
-				_enter_river_burn()
-			_:
-				_enter_payout()
-	else:
-		for chip in chip_groups:
-			chip.modulate = Color.WHITE
-		_fail_action("MISSED POT", p, _pot_rect().get_center())
-
-
-func _enter_flop_burn() -> void:
-	phase = "flop_burn"
-	burn_done = false
-	deck_label.text = "DECK\nFLICK BURN"
-	mission_label.text = "FLOP · BURN"
-	top_status.text = "BOARD ACTION"
-	_set_hint("Flick one burn card upward from the deck.")
-
-
-func _enter_turn_burn() -> void:
-	phase = "turn_burn"
-	burn_done = false
-	deck_label.text = "DECK\nFLICK BURN"
-	mission_label.text = "TURN · BURN"
-	top_status.text = "BOARD ACTION"
-	street_target.visible = true
-	street_target.position = Vector2(474, 252)
-	_set_hint("Burn first. Then drag one card to the Turn target.")
-
-
-func _enter_river_burn() -> void:
-	phase = "river_burn"
-	burn_done = false
-	deck_label.text = "DECK\nFLICK BURN"
-	mission_label.text = "RIVER · BURN"
-	top_status.text = "BOARD ACTION"
-	street_target.visible = true
-	street_target.position = Vector2(548, 252)
-	_set_hint("Burn first. Then drag one card to the River target.")
-
-
-func _resolve_burn(p: Vector2) -> void:
-	var dy := pointer_start.y - p.y
-	if dy >= 110.0:
-		_hide_proxy()
-		burn_done = true
-		combo += 1
-		perfect_actions += 1
-		_show_feedback("BURN", p, GOOD)
-		if phase == "flop_burn":
-			phase = "flop_packet"
-			deck_label.text = "DECK\nDRAG 3-CARD PACKET"
-			mission_label.text = "FLOP · PACKET FAN"
-			_set_hint("Drag the 3-card packet into the Board / Fan Area.")
-		elif phase == "turn_burn":
-			phase = "turn_card"
-			deck_label.text = "DECK\nDRAG TURN"
-			mission_label.text = "TURN · OPEN"
-		else:
-			phase = "river_card"
-			deck_label.text = "DECK\nDRAG RIVER"
-			mission_label.text = "RIVER · OPEN"
-	else:
-		_fail_action("BURN FIRST", p, _deck_rect().get_center())
-
-
-func _resolve_flop_packet(p: Vector2) -> void:
-	if burn_done and _fan_rect().grow(24).has_point(p):
-		_hide_proxy()
-		for i in range(3):
-			board_cards[i].visible = true
-		perfect_actions += 1
-		combo += 1
-		_show_feedback("FLOP OPEN", _fan_rect().get_center(), GOOD)
-		await get_tree().create_timer(0.3).timeout
-		_prepare_postflop_betting()
-	else:
-		_fail_action("FAN AREA", p, _deck_rect().get_center())
-
-
-func _resolve_street_card(p: Vector2) -> void:
-	var target := _street_rect()
-	if burn_done and target.grow(24).has_point(p):
-		_hide_proxy()
-		var index := 3 if phase == "turn_card" else 4
-		board_cards[index].visible = true
-		combo += 1
-		perfect_actions += 1
-		_show_feedback("OPEN", target.get_center(), GOOD)
-		await get_tree().create_timer(0.3).timeout
-		street_target.visible = false
-		_prepare_postflop_betting()
-	else:
-		_fail_action("WRONG TARGET", p, _deck_rect().get_center())
-
-
-func _prepare_postflop_betting() -> void:
-	deck_label.text = "DECK\nWAIT"
-	_show_bets(true)
-	phase = "collect"
-	mission_label.text = "COLLECT · SWEEP"
-	top_status.text = "NPC BETTING COMPLETE"
-	_set_hint("Sweep the new betting round into POT.")
-
-
-func _enter_payout() -> void:
-	phase = "payout"
-	deck_label.text = "DECK\nHAND OVER"
-	mission_label.text = "SHOWDOWN · PAYOUT"
-	top_status.text = "WINNER: SEAT 3"
-	sidepot_label.text = "MAIN 6,400"
-	_mark_winner(WINNER_SEAT)
-	_set_hint("Drag the POT to the winning seat.")
-
-
-func _resolve_payout(p: Vector2) -> void:
-	var target_index := WINNER_SEAT if phase == "payout" else SIDEPOT_WINNER_SEAT
-	if _seat_rect(target_index).grow(22).has_point(p):
-		_hide_proxy()
-		combo += 1
-		perfect_actions += 1
-		_show_feedback("PAID", _seat_center(target_index), GOOD)
-		if phase == "payout":
-			await get_tree().create_timer(0.3).timeout
-			_enter_sidepot()
-		else:
-			await get_tree().create_timer(0.3).timeout
-			_finish_shift()
-	else:
-		_fail_action("NOT ELIGIBLE" if phase == "sidepot" else "WRONG WINNER", p, _pot_rect().get_center())
-
-
-func _enter_sidepot() -> void:
-	phase = "sidepot"
-	_clear_seat_targets()
-	_mark_winner(SIDEPOT_WINNER_SEAT)
-	mission_label.text = "SIDE POT"
-	top_status.text = "ELIGIBLE: SEAT 5"
-	pot_label.text = "SIDE POT"
-	sidepot_label.text = "1,800"
-	_set_hint("Only the eligible seat may receive this side pot.")
-
-
-func _finish_shift() -> void:
-	phase = "complete"
+func _show_home() -> void:
+	session_active = false
+	resolving = false
+	home_layer.visible = true
 	game_layer.visible = false
-	complete_layer.visible = true
-	home_layer.visible = false
-	career_layer.visible = false
-	var result := complete_layer.get_node("Panel/Result") as Label
-	if result == null:
-		result = _find_result_label()
-	if result != null:
-		var total_actions: int = maxi(perfect_actions + mistakes, 1)
-		var accuracy := int(round(float(perfect_actions) / float(total_actions) * 100.0))
-		result.text = "ACCURACY  %d%%\nMAX COMBO  x%d\nMISTAKES  %d\n\nDIRECT-MANIPULATION LOOP COMPLETE" % [accuracy, combo, mistakes]
-	mission_label.text = "SHIFT COMPLETE"
-	top_status.text = BUILD_ID
-	_refresh_stats()
-
-
-func _find_result_label() -> Label:
-	for child in complete_layer.get_children():
-		if child is Panel:
-			var found := (child as Panel).get_node_or_null("Result") as Label
-			if found != null:
-				return found
-	return null
+	complete_layer.visible = false
+	level_label.text = "LV.1  신입 딜러"
+	cash_label.text = "TIP  %s" % _format_amount(cash)
+	crown_label.text = "REP  120"
+	accuracy_label.text = "ACC 100%"
+	combo_label.text = "COMBO x0"
+	timer_label.text = "READY"
+	timer_label.add_theme_color_override("font_color", GOOD)
 
 
 func _start_shift() -> void:
-	phase = "deal"
-	deal_index = 0
-	collect_round = 0
-	burn_done = false
+	tasks = RookieShiftScenario.build()
+	current_task_index = 0
+	session_active = true
+	resolving = false
+	correct_actions = 0
 	mistakes = 0
 	combo = 0
-	perfect_actions = 0
-	session_started_ms = Time.get_ticks_msec()
+	max_combo = 0
+	tips = 0
 
 	home_layer.visible = false
-	career_layer.visible = false
-	complete_layer.visible = false
 	game_layer.visible = true
+	complete_layer.visible = false
 
-	for i in range(6):
-		seat_states[i].text = "WAIT\n□ □"
-		seat_states[i].add_theme_color_override("font_color", MUTED)
-		seats[i].add_theme_stylebox_override("panel", _style(PANEL, LINE, 2, 14))
-	for card in board_cards:
-		card.visible = false
-	for chip in chip_groups:
-		chip.visible = false
-		chip.modulate = Color.WHITE
+	for i in range(history_labels.size()):
+		history_labels[i].text = "—"
 
-	pot_label.text = "POT"
-	sidepot_label.text = "0"
-	street_target.visible = false
-	deck_label.text = "DECK\nDRAG CARD"
-	top_status.text = BUILD_ID
-	mission_label.text = "DEAL · 1 / 12"
-	_set_hint("Drag from the deck to the highlighted seat.")
-	_refresh_deal_target()
-	_refresh_stats()
+	_apply_task(tasks[current_task_index])
+	_refresh_hud()
 
 
-func _refresh_deal_target() -> void:
-	_clear_seat_targets()
-	var expected := deal_index % 6
-	seats[expected].add_theme_stylebox_override("panel", _style(PANEL_2, ACCENT, 4, 14))
-	mission_label.text = "DEAL · %d / 12" % (deal_index + 1)
+func _apply_task(task: DealerTask) -> void:
+	time_left = task.time_limit
+	phase_label.text = task.phase
+	headline_label.text = task.headline
+	prompt_label.text = task.prompt
+
+	for i in range(choice_buttons.size()):
+		if i < task.choices.size():
+			choice_buttons[i].text = task.choices[i]
+			choice_buttons[i].visible = true
+			choice_buttons[i].disabled = false
+		else:
+			choice_buttons[i].visible = false
+
+	_apply_table_state(task.state)
+	_refresh_timer()
 
 
-func _clear_seat_targets() -> void:
-	for i in range(seats.size()):
-		seats[i].add_theme_stylebox_override("panel", _style(PANEL, LINE, 2, 14))
+func _apply_table_state(state: Dictionary) -> void:
+	var board_count: int = int(state.get("board_count", 0))
+	for i in range(board_panels.size()):
+		board_panels[i].visible = i < board_count
+
+	var main_pot: int = int(state.get("main_pot", 0))
+	var side_pot: int = int(state.get("side_pot", 0))
+	main_pot_label.text = "MAIN POT  %s" % _format_amount(main_pot)
+	side_pot_label.text = "SIDE POT  %s" % _format_amount(side_pot)
+
+	var request_text: String = String(state.get("request", ""))
+	request_panel.visible = not request_text.is_empty()
+	request_label.text = request_text
+
+	var raw_states: Variant = state.get("seat_states", [])
+	if raw_states is Array:
+		var values: Array = raw_states as Array
+		for i in range(seat_state_labels.size()):
+			seat_state_labels[i].text = String(values[i]) if i < values.size() else "WAIT"
+
+	var raw_bets: Variant = state.get("bets", [])
+	if raw_bets is Array:
+		var bet_values: Array = raw_bets as Array
+		for i in range(bet_panels.size()):
+			var amount: int = int(bet_values[i]) if i < bet_values.size() else 0
+			bet_panels[i].visible = amount > 0
+			bet_labels[i].text = _format_amount(amount)
+
+	_reset_seat_styles()
+	var raw_highlights: Variant = state.get("highlight_seats", [])
+	if raw_highlights is Array:
+		for value: Variant in raw_highlights:
+			var seat_index: int = int(value)
+			if seat_index >= 0 and seat_index < seat_panels.size():
+				seat_panels[seat_index].add_theme_stylebox_override(
+					"panel",
+					_style(Color("2b2618"), ACCENT, 3, 14)
+				)
+
+	showdown_panel.visible = current_task_index >= 10
+	if showdown_panel.visible:
+		showdown_label.text = "SHOWDOWN\n소연  A♠ K♠\n토니  Q♦ Q♣\n찰리  J♣ 10♣"
 
 
-func _mark_winner(index: int) -> void:
-	_clear_seat_targets()
-	seats[index].add_theme_stylebox_override("panel", _style(Color("33270f"), ACCENT, 4, 14))
+func _on_choice_pressed(choice_index: int) -> void:
+	if not session_active or resolving or current_task_index < 0:
+		return
+
+	var task: DealerTask = tasks[current_task_index]
+	if choice_index == task.correct_index:
+		_resolve_correct(task)
+	else:
+		_resolve_wrong(task, choice_index)
 
 
-func _update_target_highlights(p: Vector2) -> void:
-	if drag_mode == "deal_card":
-		var expected := deal_index % 6
-		if _seat_rect(expected).grow(18).has_point(p):
-			seats[expected].add_theme_stylebox_override("panel", _style(Color("173222"), GOOD, 4, 14))
-	elif drag_mode == "flop_packet" and _fan_rect().grow(24).has_point(p):
-		fan_target.add_theme_stylebox_override("panel", _style(Color("183f35"), GOOD, 3, 18))
-	elif drag_mode == "street_card" and _street_rect().grow(24).has_point(p):
-		street_target.add_theme_stylebox_override("panel", _style(Color("183f35"), GOOD, 3, 16))
+func _resolve_correct(task: DealerTask) -> void:
+	resolving = true
+	correct_actions += 1
+	combo += 1
+	max_combo = maxi(max_combo, combo)
+
+	var ratio: float = time_left / maxf(task.time_limit, 0.01)
+	var speed_bonus: int = 0
+	if ratio >= 0.65:
+		speed_bonus = 80
+	elif ratio >= 0.35:
+		speed_bonus = 30
+
+	var earned: int = task.base_tip + speed_bonus
+	tips += earned
+	cash += earned
+
+	_show_feedback(
+		("%s  ·  TIP +%d" % [task.success_text, earned]),
+		GOOD
+	)
+	_append_history("✓ %s  +%d" % [task.success_text, earned], GOOD)
+	_disable_choices()
+	_refresh_hud()
+
+	await _play_action_feedback(task.action_kind)
+	await get_tree().create_timer(0.18).timeout
+
+	current_task_index += 1
+	if current_task_index >= tasks.size():
+		_finish_shift()
+		return
+
+	resolving = false
+	_apply_task(tasks[current_task_index])
 
 
-func _clear_target_highlights() -> void:
-	if phase == "deal":
-		_refresh_deal_target()
-	fan_target.add_theme_stylebox_override("panel", _style(Color("15352f"), Color("315f55"), 2, 18))
-	street_target.add_theme_stylebox_override("panel", _style(Color("173a33"), ACCENT, 2, 16))
-
-
-func _show_bets(show: bool) -> void:
-	for i in range(chip_groups.size()):
-		chip_groups[i].visible = show
-		chip_groups[i].modulate = Color.WHITE
-		chip_labels[i].text = _format_amount(BET_VALUES[i])
-
-
-func _current_pot_total() -> int:
-	var total := 0
-	for value in BET_VALUES:
-		total += value
-	return total
-
-
-func _begin_proxy(label_text: String, proxy_size: Vector2, p: Vector2) -> void:
-	drag_proxy.size = proxy_size
-	drag_proxy_label.size = proxy_size
-	drag_proxy_label.text = label_text
-	drag_proxy.position = p - proxy_size * 0.5
-	drag_proxy.visible = true
-
-
-func _hide_proxy() -> void:
-	drag_proxy.visible = false
-
-
-func _fail_action(message: String, at: Vector2, return_to: Vector2) -> void:
+func _resolve_wrong(task: DealerTask, choice_index: int) -> void:
 	mistakes += 1
 	combo = 0
-	_show_feedback(message, at, BAD)
-	if drag_proxy.visible:
-		var tween := create_tween()
-		tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(drag_proxy, "position", return_to - drag_proxy.size * 0.5, 0.22)
-		tween.tween_callback(_hide_proxy)
-	_refresh_stats()
+	time_left = maxf(time_left - 1.5, 0.5)
+
+	var chosen: String = "-"
+	if choice_index >= 0 and choice_index < task.choices.size():
+		chosen = task.choices[choice_index]
+
+	_show_feedback("잘못된 처리 · %s" % chosen, BAD)
+	_append_history("× %s  · 다시 판단" % chosen, BAD)
+	_flash_mission(BAD)
+	_refresh_hud()
 
 
-func _flash_seat(index: int, color: Color) -> void:
-	seats[index].add_theme_stylebox_override("panel", _style(Color("173222"), color, 4, 14))
-	var tween := create_tween()
-	tween.tween_interval(0.18)
-	tween.tween_callback(_refresh_deal_target)
+func _handle_timeout() -> void:
+	if resolving or current_task_index < 0:
+		return
+
+	resolving = true
+	var task: DealerTask = tasks[current_task_index]
+	mistakes += 1
+	combo = 0
+	_show_feedback("TIME OUT · FLOOR ASSIST", BAD)
+	_append_history("× 시간 초과 · FLOOR ASSIST", BAD)
+	_disable_choices()
+	_refresh_hud()
+
+	await _play_action_feedback(task.action_kind)
+	await get_tree().create_timer(0.35).timeout
+
+	current_task_index += 1
+	if current_task_index >= tasks.size():
+		_finish_shift()
+		return
+
+	resolving = false
+	_apply_task(tasks[current_task_index])
 
 
-func _show_feedback(message: String, at: Vector2, color: Color, duration: float = 0.65) -> void:
-	feedback_label.text = message
-	feedback_label.position = at - Vector2(110, 20)
+func _play_action_feedback(kind: String) -> void:
+	match kind:
+		"deal":
+			for i in range(seat_panels.size()):
+				seat_state_labels[i].text = "DEALT 2"
+				_flash_panel(seat_panels[i], GOOD)
+				await get_tree().create_timer(0.055).timeout
+		"collect":
+			for bet in bet_panels:
+				bet.visible = false
+			_pulse_pot(GOOD)
+			await get_tree().create_timer(0.32).timeout
+		"sidepot":
+			main_pot_label.add_theme_color_override("font_color", GOOD)
+			side_pot_label.add_theme_color_override("font_color", ACCENT)
+			_pulse_pot(ACCENT)
+			await get_tree().create_timer(0.38).timeout
+		"flop":
+			for i in range(3):
+				board_panels[i].visible = true
+				await get_tree().create_timer(0.10).timeout
+		"turn":
+			board_panels[3].visible = true
+			await get_tree().create_timer(0.30).timeout
+		"river":
+			board_panels[4].visible = true
+			await get_tree().create_timer(0.30).timeout
+		"chip_change":
+			request_label.text = "칩 교환 완료"
+			request_panel.add_theme_stylebox_override("panel", _style(Color("153126"), GOOD, 2, 13))
+			await get_tree().create_timer(0.38).timeout
+		"main_payout":
+			main_pot_label.text = "MAIN POT  지급 완료"
+			_flash_panel(seat_panels[2], GOOD)
+			await get_tree().create_timer(0.40).timeout
+		"side_payout":
+			side_pot_label.text = "SIDE POT  지급 완료"
+			_flash_panel(seat_panels[5], GOOD)
+			await get_tree().create_timer(0.40).timeout
+		_:
+			await get_tree().create_timer(0.25).timeout
+
+
+func _finish_shift() -> void:
+	session_active = false
+	resolving = false
+	game_layer.visible = false
+	complete_layer.visible = true
+
+	var total: int = maxi(correct_actions + mistakes, 1)
+	var accuracy: int = int(round(float(correct_actions) / float(total) * 100.0))
+	var result := complete_layer.get_node("Panel/Result") as Label
+	if result != null:
+		var grade: String = "GOOD SHIFT"
+		if accuracy >= 95 and mistakes == 0:
+			grade = "PERFECT SHIFT"
+		elif accuracy < 70:
+			grade = "KEEP TRAINING"
+		result.text = "%s\n\n정확도  %d%%\n최대 콤보  x%d\n실수  %d\nTIP BONUS  +%s" % [
+			grade,
+			accuracy,
+			max_combo,
+			mistakes,
+			_format_amount(tips),
+		]
+
+	timer_label.text = "DONE"
+	accuracy_label.text = "ACC %d%%" % accuracy
+	combo_label.text = "MAX x%d" % max_combo
+	cash_label.text = "TIP  %s" % _format_amount(cash)
+
+
+func _refresh_hud() -> void:
+	var total: int = correct_actions + mistakes
+	var accuracy: int = 100
+	if total > 0:
+		accuracy = int(round(float(correct_actions) / float(total) * 100.0))
+	accuracy_label.text = "ACC %d%%" % accuracy
+	combo_label.text = "COMBO x%d" % combo
+	cash_label.text = "TIP  %s" % _format_amount(cash)
+
+
+func _refresh_timer() -> void:
+	timer_label.text = "%04.1f" % time_left
+	if time_left <= 2.5:
+		timer_label.add_theme_color_override("font_color", BAD)
+	elif time_left <= 5.0:
+		timer_label.add_theme_color_override("font_color", ACCENT)
+	else:
+		timer_label.add_theme_color_override("font_color", GOOD)
+
+
+func _disable_choices() -> void:
+	for button in choice_buttons:
+		button.disabled = true
+
+
+func _append_history(text_value: String, color: Color) -> void:
+	for i in range(history_labels.size() - 1, 0, -1):
+		history_labels[i].text = history_labels[i - 1].text
+		history_labels[i].add_theme_color_override(
+			"font_color",
+			history_labels[i - 1].get_theme_color("font_color")
+		)
+	history_labels[0].text = text_value
+	history_labels[0].add_theme_color_override("font_color", color)
+
+
+func _show_feedback(text_value: String, color: Color) -> void:
+	feedback_label.text = text_value
 	feedback_label.add_theme_color_override("font_color", color)
 	feedback_label.modulate = Color.WHITE
 	feedback_label.visible = true
 	var tween := create_tween()
-	tween.tween_interval(duration)
-	tween.tween_property(feedback_label, "modulate:a", 0.0, 0.18)
-	tween.tween_callback(func() -> void: feedback_label.visible = false)
+	tween.tween_interval(0.55)
+	tween.tween_property(feedback_label, "modulate:a", 0.0, 0.20)
+	tween.tween_callback(func() -> void:
+		feedback_label.visible = false
+		feedback_label.modulate = Color.WHITE
+	)
 
 
-func _set_hint(text: String) -> void:
-	var hint := game_layer.get_node_or_null("Hint") as Label
-	if hint != null:
-		hint.text = text
+func _flash_mission(color: Color) -> void:
+	var original: Color = prompt_label.get_theme_color("font_color")
+	prompt_label.add_theme_color_override("font_color", color)
+	var tween := create_tween()
+	tween.tween_interval(0.20)
+	tween.tween_callback(func() -> void:
+		prompt_label.add_theme_color_override("font_color", original)
+	)
 
 
-func _refresh_stats() -> void:
-	var total_actions := perfect_actions + mistakes
-	var accuracy := 100
-	if total_actions > 0:
-		accuracy = int(round(float(perfect_actions) / float(total_actions) * 100.0))
-	accuracy_label.text = "ACC %d%%" % accuracy
-	combo_label.text = "COMBO x%d" % combo
+func _flash_panel(panel: Panel, color: Color) -> void:
+	var original_scale: Vector2 = panel.scale
+	panel.pivot_offset = panel.size * 0.5
+	panel.add_theme_stylebox_override("panel", _style(Color("183126"), color, 3, 14))
+	var tween := create_tween()
+	tween.tween_property(panel, "scale", Vector2(1.05, 1.05), 0.10)
+	tween.tween_property(panel, "scale", original_scale, 0.12)
 
 
-func _show_home() -> void:
-	phase = "home"
-	home_layer.visible = true
-	career_layer.visible = false
-	game_layer.visible = false
-	complete_layer.visible = false
-	top_status.text = BUILD_ID
-	mission_label.text = "READY"
-	accuracy_label.text = "ACC 100%"
-	combo_label.text = "COMBO x0"
-	feedback_label.visible = false
-	_hide_proxy()
+func _pulse_pot(color: Color) -> void:
+	pot_panel.add_theme_stylebox_override("panel", _style(Color("203027"), color, 3, 24))
+	var tween := create_tween()
+	tween.tween_property(pot_panel, "scale", Vector2(1.08, 1.08), 0.12)
+	tween.tween_property(pot_panel, "scale", Vector2.ONE, 0.14)
 
 
-func _show_career() -> void:
-	phase = "career"
-	home_layer.visible = false
-	career_layer.visible = true
-	game_layer.visible = false
-	complete_layer.visible = false
-	top_status.text = "CAREER"
-	mission_label.text = "SELECT TABLE"
-
-
-func _deck_rect() -> Rect2:
-	return Rect2(game_layer.position + deck.position, deck.size)
-
-
-func _table_rect() -> Rect2:
-	return Rect2(game_layer.position + table.position, table.size)
-
-
-func _pot_rect() -> Rect2:
-	return Rect2(game_layer.position + table.position + pot.position, pot.size)
-
-
-func _seat_rect(index: int) -> Rect2:
-	return Rect2(game_layer.position + table.position + seats[index].position, seats[index].size)
-
-
-func _seat_center(index: int) -> Vector2:
-	return _seat_rect(index).get_center()
-
-
-func _chip_rect(index: int) -> Rect2:
-	return Rect2(game_layer.position + table.position + chip_groups[index].position, chip_groups[index].size)
-
-
-func _fan_rect() -> Rect2:
-	return Rect2(game_layer.position + table.position + fan_target.position, fan_target.size)
-
-
-func _street_rect() -> Rect2:
-	return Rect2(game_layer.position + table.position + street_target.position, street_target.size)
+func _reset_seat_styles() -> void:
+	for panel in seat_panels:
+		panel.scale = Vector2.ONE
+		panel.add_theme_stylebox_override("panel", _style(PANEL, LINE, 2, 14))
+	request_panel.add_theme_stylebox_override("panel", _style(Color("282136"), Color("a77fe8"), 2, 13))
+	main_pot_label.add_theme_color_override("font_color", ACCENT)
+	side_pot_label.add_theme_color_override("font_color", TEXT)
+	pot_panel.scale = Vector2.ONE
+	pot_panel.add_theme_stylebox_override("panel", _style(Color("1d2630"), ACCENT, 2, 24))
 
 
 func _format_amount(value: int) -> String:
-	var raw := str(value)
-	var out := ""
-	var count := 0
+	var raw: String = str(value)
+	var result: String = ""
+	var count: int = 0
 	for i in range(raw.length() - 1, -1, -1):
 		if count > 0 and count % 3 == 0:
-			out = "," + out
-		out = raw[i] + out
+			result = "," + result
+		result = raw[i] + result
 		count += 1
-	return out
+	return result
 
 
 func _style(bg: Color, border: Color, width: int, radius: int) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.border_color = border
-	s.border_width_left = width
-	s.border_width_top = width
-	s.border_width_right = width
-	s.border_width_bottom = width
-	s.corner_radius_top_left = radius
-	s.corner_radius_top_right = radius
-	s.corner_radius_bottom_left = radius
-	s.corner_radius_bottom_right = radius
-	return s
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg
+	style.border_color = border
+	style.border_width_left = width
+	style.border_width_top = width
+	style.border_width_right = width
+	style.border_width_bottom = width
+	style.corner_radius_top_left = radius
+	style.corner_radius_top_right = radius
+	style.corner_radius_bottom_left = radius
+	style.corner_radius_bottom_right = radius
+	return style
