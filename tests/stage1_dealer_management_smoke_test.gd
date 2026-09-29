@@ -84,12 +84,19 @@ func _run() -> int:
 		return _fail("Quiz prompt returned to the runtime.")
 	if runtime_text.contains("docs/wireframes") or runtime_text.contains("TextureRect"):
 		return _fail("Runtime still renders wireframe reference images.")
-	if not runtime_text.contains("DEALER TOOLS"):
-		return _fail("Persistent dealer tool surface is missing.")
-	if not runtime_text.contains("_on_seat_pressed"):
-		return _fail("Payout does not target actual table seats.")
+	if runtime_text.contains("ACTION_ORDER") or runtime_text.contains("_build_tool_panel"):
+		return _fail("Persistent dealer toolbar should not exist in the table-first runtime.")
+	for required in [
+		"_on_deck_pressed",
+		"_on_pot_pressed",
+		"_on_board_pressed",
+		"_on_request_pressed",
+		"_on_seat_pressed",
+	]:
+		if not runtime_text.contains(required):
+			return _fail("Table-first interaction is missing: %s" % required)
 
-	print("LET'S DEALER live-table smoke test passed.")
+	print("LET'S DEALER table-first compatibility smoke test passed.")
 	return 0
 
 
