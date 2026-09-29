@@ -25,3 +25,6 @@ jobs:
 
       - name: Run core gameplay smoke test
         run: godot --headless --path . --script res://tests/core_smoke_test.gd
+
+      - name: Run UI card home smoke test
+        run: godot --headless --path . --script res://tests/ui_card_home_smoke_test.gd
