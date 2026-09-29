@@ -831,7 +831,7 @@ func _spawn_service_request(event: Dictionary) -> void:
 		seat_state_labels[seat].text = "REQUEST"
 
 	_enqueue_duty(DealerTask.new({
-		"id": "service_%d_%s" % [hand_index, String(Time.get_ticks_msec())],
+		"id": "service_%d_%s" % [hand_index, str(Time.get_ticks_msec())],
 		"phase": "SERVICE",
 		"expected_action": "chip_change",
 		"success_text": "CHIP CHANGE",
