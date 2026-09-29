@@ -1,9 +1,7 @@
 extends Control
 
 const MIN_CARD_SWIPE_DISTANCE: float = 42.0
-const MIN_CARD_DIRECTION_SCORE: float = 0.35
 const MIN_CHIP_SWEEP_DISTANCE: float = 34.0
-const MIN_CHIP_DIRECTION_SCORE: float = 0.25
 
 @onready var phase_label: Label = $PhaseLabel
 @onready var stats_label: Label = $StatsLabel
@@ -91,7 +89,7 @@ func _on_start_hand_pressed() -> void:
 	_clear_hand_visuals()
 	game.start_hand()
 	_arm_next_card()
-	hint_label.text = "Swipe the card toward the highlighted player."
+	hint_label.text = "Swipe the card. It will go to the highlighted player."
 	_refresh_all_seat_views()
 	_refresh_pot()
 	_refresh_ui()
@@ -128,15 +126,17 @@ func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> 
 	var swipe_delta: Vector2 = end_position - start_position
 	if swipe_delta.length() < MIN_CARD_SWIPE_DISTANCE:
 		card_drag.snap_home()
-		hint_label.text = "Use a short swipe toward the highlighted player."
+		hint_label.text = "Give the card a short swipe."
 		return
 
-	var target_seat_index: int = _resolve_card_swipe_target(start_position, end_position)
+	var target_seat_index: int = game.expected_deal_seat()
 	if target_seat_index < 0:
 		card_drag.snap_home()
-		hint_label.text = "Swipe toward a player, then release."
 		return
 
+	# Dealing order is already known by the dealer. The swipe supplies tactile
+	# intent; it should not become an aiming minigame. Any deliberate swipe
+	# sends the card to the currently highlighted seat.
 	var dealt: bool = game.try_deal_card_to_seat(target_seat_index)
 	if not dealt:
 		card_drag.snap_home()
@@ -152,7 +152,7 @@ func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> 
 	_animate_dealt_card_to_zone(target_seat_index, dealt_card_id, flight_start)
 
 	if game.table.hand.phase == HandState.Phase.DEALING:
-		hint_label.text = "Good. Swipe the next card toward the highlighted player."
+		hint_label.text = "Good. Swipe the next card."
 
 	_refresh_ui()
 
@@ -164,7 +164,7 @@ func _on_betting_ready() -> void:
 		var seat: PlayerSeat = game.table.get_seat(seat_index)
 		chip_stacks[seat_index].arm(seat.current_bet)
 
-	hint_label.text = "Bets are in. Sweep each chip stack toward the center pot."
+	hint_label.text = "Bets are in. Sweep each betting stack to collect it."
 	_refresh_ui()
 
 func _on_chip_sweep_released(
@@ -180,22 +180,12 @@ func _on_chip_sweep_released(
 
 	if sweep_delta.length() < MIN_CHIP_SWEEP_DISTANCE:
 		chip_stack.snap_home()
-		hint_label.text = "Sweep the chips toward the center pot."
+		hint_label.text = "Give that betting stack a short sweep."
 		return
 
-	var pot_center: Vector2 = pot_label.get_global_rect().get_center()
-	var target_vector: Vector2 = pot_center - start_position
-
-	if target_vector.length_squared() <= 0.001:
-		chip_stack.snap_home()
-		return
-
-	var direction_score: float = sweep_delta.normalized().dot(target_vector.normalized())
-	if direction_score < MIN_CHIP_DIRECTION_SCORE:
-		chip_stack.snap_home()
-		hint_label.text = "Move that betting stack toward POT."
-		return
-
+	# A betting stack only has one valid dealer destination: the pot. Requiring
+	# precise aiming would make dexterity the challenge, which is not the game.
+	# Any deliberate sweep on the correct stack collects it into the pot.
 	var seat: PlayerSeat = game.table.get_seat(seat_index)
 	var amount: int = seat.current_bet
 	var flight_start: Vector2 = chip_stack.global_position
@@ -215,31 +205,6 @@ func _on_bet_collected(_seat_index: int, _amount: int, pot_total: int) -> void:
 		hint_label.text = "Pot complete: %d. Open the flop." % pot_total
 	else:
 		hint_label.text = "Good. Collect the remaining betting stacks."
-
-func _resolve_card_swipe_target(start_position: Vector2, end_position: Vector2) -> int:
-	var swipe_vector: Vector2 = end_position - start_position
-	if swipe_vector.length() < MIN_CARD_SWIPE_DISTANCE:
-		return -1
-
-	var swipe_direction: Vector2 = swipe_vector.normalized()
-	var best_index: int = -1
-	var best_score: float = -1.0
-
-	for index in range(card_zone_panels.size()):
-		var zone: Control = card_zone_panels[index]
-		var target_vector: Vector2 = zone.get_global_rect().get_center() - start_position
-		if target_vector.length_squared() <= 0.001:
-			continue
-
-		var score: float = swipe_direction.dot(target_vector.normalized())
-		if score > best_score:
-			best_score = score
-			best_index = index
-
-	if best_score < MIN_CARD_DIRECTION_SCORE:
-		return -1
-
-	return best_index
 
 func _animate_dealt_card_to_zone(
 	seat_index: int,
