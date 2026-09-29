@@ -40,10 +40,12 @@ func _run() -> int:
 		if not runtime_text.contains(required):
 			return _fail("Stage 5 game-feel feature is missing: %s" % required)
 
-	if not runtime_text.contains('badge.text = "ROOKIE HALL · NIGHT SHIFT"'):
-		return _fail("Home screen still reads like a development/tutorial screen.")
-	if not runtime_text.contains('ititle.text = "SHIFT CONDITIONS"'):
-		return _fail("Home screen should present game conditions, not instructions.")
+	if not runtime_text.contains('h1.text = "RIVER PUB"'):
+		return _fail("Home screen should be venue-first rather than tutorial-first.")
+	if not runtime_text.contains('goal_kicker.text = "TODAY GOAL"'):
+		return _fail("Home screen should present a game goal, not instructions.")
+	if not runtime_text.contains('reward_kicker.text = "SHIFT REWARD"'):
+		return _fail("Home screen should present shift rewards, not tutorial copy.")
 	if not runtime_text.contains('context_label.visible = false'):
 		return _fail("Context instruction label should stay hidden.")
 	if not runtime_text.contains('hidden_log.visible = false'):
