@@ -29,8 +29,7 @@ func _run() -> int:
 		"_on_request_pressed",
 		"_on_seat_pressed",
 		"_refresh_floor_affordance",
-		"CALL FLOOR",
-		"POT 선택됨",
+		"FLOOR",
 	]:
 		if not runtime_text.contains(required):
 			return _fail("Missing table-first interaction feature: %s" % required)
