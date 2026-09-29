@@ -13,9 +13,11 @@ func _run() -> void:
 	root.add_child(scene)
 	await process_frame
 
-	# Start the hand through the button's actual GUI signal path.
-	var start_button: Button = scene.get_node("StartHandButton") as Button
-	await _mouse_click(start_button.get_global_rect().get_center())
+	# Headless Godot does not reliably route synthetic mouse events through GUI
+	# Button focus/press handling, so start the hand directly. From this point on,
+	# all card/chip interactions go through Input.parse_input_event and the same
+	# _input path used by a real PC mouse.
+	scene.call("_on_start_hand_pressed")
 	await process_frame
 
 	var game: DealerGameState = scene.get("game") as DealerGameState
@@ -26,10 +28,10 @@ func _run() -> void:
 		return
 
 	if game.table.hand.phase != HandState.Phase.DEALING:
-		_fail("Actual mouse click did not start the hand.")
+		_fail("Hand did not enter DEALING before real-input test.")
 		return
 
-	for expected_count in range(1, 3):
+	for expected_count in range(1, 9):
 		await _mouse_click(card.get_input_rect().get_center())
 		await process_frame
 
@@ -40,11 +42,35 @@ func _run() -> void:
 			)
 			return
 
-		if not card.visible:
-			_fail("Next source card disappeared after actual mouse deal %d." % expected_count)
+	if game.table.hand.phase != HandState.Phase.BETTING_PREFLOP:
+		_fail("Eight real mouse card actions did not reach COLLECT BETS.")
+		return
+
+	var chip_indices: Array[int] = [0, 1, 3]
+	for chip_index in chip_indices:
+		var chip: SwipeChipStack = scene.get_node(
+			"TableSurface/ChipStack%d" % chip_index
+		) as SwipeChipStack
+
+		if chip == null or not chip.visible:
+			_fail("Expected betting stack %d was not available." % chip_index)
 			return
 
-	print("LET'S DEALER real mouse input smoke test passed.")
+		await _mouse_click(chip.get_input_rect().get_center())
+		await process_frame
+
+	if game.table.hand.pot.main_pot != 100:
+		_fail(
+			"Actual mouse chip input did not create POT 100. Got %d."
+			% game.table.hand.pot.main_pot
+		)
+		return
+
+	if not game.all_bets_collected():
+		_fail("Actual mouse chip input left pending bets.")
+		return
+
+	print("LET'S DEALER real mouse card/chip input smoke test passed.")
 	scene.queue_free()
 	quit(0)
 
