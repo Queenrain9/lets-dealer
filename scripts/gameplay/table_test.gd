@@ -1,14 +1,5 @@
 extends Control
 
-const POINTER_NONE: int = -999
-const MOUSE_POINTER_ID: int = -1
-
-enum InteractionKind {
-	NONE,
-	CARD,
-	CHIP,
-}
-
 @onready var phase_label: Label = $PhaseLabel
 @onready var stats_label: Label = $StatsLabel
 @onready var hint_label: Label = $HintLabel
@@ -24,10 +15,6 @@ var card_zone_panels: Array[Control] = []
 var card_rows: Array[HBoxContainer] = []
 var chip_stacks: Array[SwipeChipStack] = []
 
-var _interaction_kind: InteractionKind = InteractionKind.NONE
-var _active_pointer_id: int = POINTER_NONE
-var _active_chip_index: int = -1
-var _gesture_start: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	var table_config: TableConfig = load(
@@ -85,6 +72,12 @@ func _ready() -> void:
 
 	start_hand_button.pressed.connect(_on_start_hand_pressed)
 	advance_button.pressed.connect(_on_advance_pressed)
+	card_drag.gui_input.connect(_on_card_gui_input)
+
+	for chip_stack in chip_stacks:
+		chip_stack.gui_input.connect(
+			_on_chip_gui_input.bind(chip_stack.seat_index)
+		)
 
 	card_drag.disarm()
 	for chip_stack in chip_stacks:
@@ -94,106 +87,28 @@ func _ready() -> void:
 	_refresh_ui()
 	hint_label.text = "Press START HAND. This scene is a gameplay test, not final UI."
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		var mouse_button: InputEventMouseButton = event
-		if mouse_button.button_index != MOUSE_BUTTON_LEFT:
-			return
-		if mouse_button.pressed:
-			_begin_pointer_interaction(MOUSE_POINTER_ID, mouse_button.position)
-		elif (
-			_interaction_kind != InteractionKind.NONE
-			and _active_pointer_id == MOUSE_POINTER_ID
-		):
-			_end_pointer_interaction(mouse_button.position)
-		return
-
-	if event is InputEventMouseMotion:
-		if _interaction_kind != InteractionKind.NONE and _active_pointer_id == MOUSE_POINTER_ID:
-			var mouse_motion: InputEventMouseMotion = event
-			_update_pointer_interaction(mouse_motion.position)
-		return
-
-	if event is InputEventScreenTouch:
-		var touch_event: InputEventScreenTouch = event
-		if touch_event.pressed:
-			_begin_pointer_interaction(touch_event.index, touch_event.position)
-		elif _active_pointer_id == touch_event.index:
-			_end_pointer_interaction(touch_event.position)
-		return
-
-	if event is InputEventScreenDrag:
-		var touch_drag: InputEventScreenDrag = event
-		if (
-			_interaction_kind != InteractionKind.NONE
-			and _active_pointer_id == touch_drag.index
-		):
-			_update_pointer_interaction(touch_drag.position)
-
-func _begin_pointer_interaction(pointer_id: int, pointer_position: Vector2) -> void:
-	if _interaction_kind != InteractionKind.NONE:
-		return
-
-	if (
-		game.table.hand.phase == HandState.Phase.DEALING
-		and card_drag.visible
-		and card_drag.get_input_rect().has_point(pointer_position)
-	):
-		_interaction_kind = InteractionKind.CARD
-		_active_pointer_id = pointer_id
-		_gesture_start = pointer_position
-		card_drag.begin_preview()
+func _on_card_gui_input(event: InputEvent) -> void:
+	if _is_primary_press(event):
+		_commit_card_action()
 		get_viewport().set_input_as_handled()
-		return
 
-	if game.table.hand.phase == HandState.Phase.BETTING_PREFLOP:
-		for index in range(chip_stacks.size()):
-			var chip_stack: SwipeChipStack = chip_stacks[index]
-			if chip_stack.visible and chip_stack.get_input_rect().has_point(pointer_position):
-				_interaction_kind = InteractionKind.CHIP
-				_active_pointer_id = pointer_id
-				_active_chip_index = index
-				_gesture_start = pointer_position
-				chip_stack.begin_preview()
-				get_viewport().set_input_as_handled()
-				return
+func _on_chip_gui_input(event: InputEvent, seat_index: int) -> void:
+	if _is_primary_press(event):
+		_commit_chip_action(seat_index)
+		get_viewport().set_input_as_handled()
 
-func _update_pointer_interaction(pointer_position: Vector2) -> void:
-	var gesture_delta: Vector2 = pointer_position - _gesture_start
-
-	match _interaction_kind:
-		InteractionKind.CARD:
-			card_drag.update_preview(gesture_delta)
-		InteractionKind.CHIP:
-			if _active_chip_index >= 0 and _active_chip_index < chip_stacks.size():
-				chip_stacks[_active_chip_index].update_preview(gesture_delta)
-		_:
-			pass
-
-func _end_pointer_interaction(_pointer_position: Vector2) -> void:
-	match _interaction_kind:
-		InteractionKind.CARD:
-			card_drag.reset_preview()
-			_commit_card_action()
-		InteractionKind.CHIP:
-			if _active_chip_index >= 0 and _active_chip_index < chip_stacks.size():
-				chip_stacks[_active_chip_index].reset_preview()
-				_commit_chip_action(_active_chip_index)
-		_:
-			pass
-
-	_interaction_kind = InteractionKind.NONE
-	_active_pointer_id = POINTER_NONE
-	_active_chip_index = -1
-	_gesture_start = Vector2.ZERO
-	get_viewport().set_input_as_handled()
+func _is_primary_press(event: InputEvent) -> bool:
+	return (
+		event is InputEventMouseButton
+		and event.button_index == MOUSE_BUTTON_LEFT
+		and event.pressed
+	)
 
 func _on_start_hand_pressed() -> void:
-	_cancel_pointer_interaction()
 	_clear_hand_visuals()
 	game.start_hand()
 	_arm_next_card()
-	hint_label.text = "Tap or swipe the card to deal to the highlighted player."
+	hint_label.text = "Click/tap the card to deal to the highlighted player."
 	_refresh_all_seat_views()
 	_refresh_pot()
 	_refresh_ui()
@@ -244,7 +159,7 @@ func _commit_card_action() -> void:
 	_animate_dealt_card_to_zone(target_seat_index, dealt_card_id, flight_start)
 
 	if game.table.hand.phase == HandState.Phase.DEALING:
-		hint_label.text = "Good. Tap or swipe the next card."
+		hint_label.text = "Good. Click/tap the next card."
 
 	_refresh_ui()
 
@@ -277,7 +192,7 @@ func _on_betting_ready() -> void:
 		var seat: PlayerSeat = game.table.get_seat(seat_index)
 		chip_stacks[seat_index].arm(seat.current_bet)
 
-	hint_label.text = "Bets are in. Tap or sweep each betting stack to collect it."
+	hint_label.text = "Bets are in. Click/tap each betting stack to collect it."
 	_refresh_ui()
 
 func _on_bet_collected(_seat_index: int, _amount: int, pot_total: int) -> void:
@@ -414,21 +329,6 @@ func _arm_next_card() -> void:
 		card_drag.arm(game.peek_next_card())
 	else:
 		card_drag.disarm()
-
-func _cancel_pointer_interaction() -> void:
-	if _interaction_kind == InteractionKind.CARD:
-		card_drag.reset_preview()
-	elif (
-		_interaction_kind == InteractionKind.CHIP
-		and _active_chip_index >= 0
-		and _active_chip_index < chip_stacks.size()
-	):
-		chip_stacks[_active_chip_index].reset_preview()
-
-	_interaction_kind = InteractionKind.NONE
-	_active_pointer_id = MOUSE_POINTER_ID
-	_active_chip_index = -1
-	_gesture_start = Vector2.ZERO
 
 func _clear_hand_visuals() -> void:
 	for seat_view in seat_views:
