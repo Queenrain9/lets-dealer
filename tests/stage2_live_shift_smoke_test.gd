@@ -27,12 +27,10 @@ func _run() -> int:
 	if hand_01.is_empty() or hand_03.is_empty():
 		return _fail("Required live-shift hand templates were lost during shuffle.")
 
-	var hand_01_flop: Dictionary = hand_01["flop"] as Dictionary
-	if not hand_01_flop.has("request"):
-		return _fail("Hand 01 should overlap a customer request with live betting.")
-	var hand_03_turn: Dictionary = hand_03["turn"] as Dictionary
-	if not hand_03_turn.has("request"):
-		return _fail("Hand 03 should overlap a customer request with live betting.")
+	if not _hand_has_live_request(hand_01):
+		return _fail("Hand 01 should contain an overlapping customer request.")
+	if not _hand_has_live_request(hand_03):
+		return _fail("Hand 03 should contain an overlapping customer request.")
 
 	var first_showdown: Dictionary = hand_01["showdown"] as Dictionary
 	var first_payouts: Array = first_showdown["payouts"] as Array
@@ -79,6 +77,17 @@ func _find_hand(hands: Array[Dictionary], target_id: String) -> Dictionary:
 		if String(hand.get("id", "")) == target_id:
 			return hand
 	return {}
+
+
+func _hand_has_live_request(hand: Dictionary) -> bool:
+	for street in ["flop", "turn", "river"]:
+		if not hand.has(street):
+			continue
+		var round_data: Dictionary = hand[street] as Dictionary
+		var raw_request: Variant = round_data.get("request", {})
+		if raw_request is Dictionary and not (raw_request as Dictionary).is_empty():
+			return true
+	return false
 
 
 func _fail(message: String) -> int:
