@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="Lucky Dealer - 카드 배분 훈련"
-run/main_scene="res://scenes/table.tscn"
+config/name="LET'S DEALER — Interaction Wireframe v1.2"
+run/main_scene="res://scenes/interaction_wireframe_v1_2.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [debug]
