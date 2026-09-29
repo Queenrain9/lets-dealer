@@ -1,0 +1,291 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/table_test.gd" id="1_table"]
+[ext_resource type="Script" path="res://scripts/ui/seat_view.gd" id="2_seat"]
+[ext_resource type="Script" path="res://scripts/ui/draggable_card.gd" id="3_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBackground"]
+bg_color = Color(0.055, 0.065, 0.08, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleTable"]
+bg_color = Color(0.07, 0.28, 0.20, 1)
+corner_radius_top_left = 42
+corner_radius_top_right = 42
+corner_radius_bottom_right = 42
+corner_radius_bottom_left = 42
+
+[sub_resource type="StyleBoxFlat" id="StyleSeat"]
+bg_color = Color(0.12, 0.14, 0.18, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.27, 0.31, 0.38, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleCard"]
+bg_color = Color(0.94, 0.94, 0.91, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.22, 0.26, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleButton"]
+bg_color = Color(0.20, 0.24, 0.32, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="TableTest" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_table")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBackground")
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="."]
+offset_left = 32.0
+offset_top = 28.0
+offset_right = 688.0
+offset_bottom = 68.0
+theme_override_font_sizes/font_size = 28
+text = "LET'S DEALER · CORE GAMEPLAY TEST"
+horizontal_alignment = 1
+
+[node name="PhaseLabel" type="Label" parent="."]
+offset_left = 36.0
+offset_top = 82.0
+offset_right = 684.0
+offset_bottom = 114.0
+theme_override_font_sizes/font_size = 20
+text = "PHASE · IDLE"
+horizontal_alignment = 1
+
+[node name="StatsLabel" type="Label" parent="."]
+offset_left = 36.0
+offset_top = 118.0
+offset_right = 684.0
+offset_bottom = 148.0
+text = "Perfect 0   Mistakes 0   Combo x0"
+horizontal_alignment = 1
+
+[node name="HintLabel" type="Label" parent="."]
+offset_left = 42.0
+offset_top = 151.0
+offset_right = 678.0
+offset_bottom = 194.0
+text = "Prototype"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="TableSurface" type="Panel" parent="."]
+offset_left = 36.0
+offset_top = 210.0
+offset_right = 684.0
+offset_bottom = 920.0
+theme_override_styles/panel = SubResource("StyleTable")
+
+[node name="BoardRow" type="HBoxContainer" parent="TableSurface"]
+offset_left = 174.0
+offset_top = 310.0
+offset_right = 474.0
+offset_bottom = 400.0
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="PotPlaceholder" type="Label" parent="TableSurface"]
+offset_left = 184.0
+offset_top = 424.0
+offset_right = 464.0
+offset_bottom = 458.0
+text = "POT / CHIP SYSTEM · NEXT MILESTONE"
+horizontal_alignment = 1
+
+[node name="Seat0" type="PanelContainer" parent="TableSurface"]
+offset_left = 234.0
+offset_top = 34.0
+offset_right = 414.0
+offset_bottom = 168.0
+theme_override_styles/panel = SubResource("StyleSeat")
+script = ExtResource("2_seat")
+seat_index = 0
+
+[node name="Content" type="VBoxContainer" parent="TableSurface/Seat0"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="TableSurface/Seat0/Content"]
+layout_mode = 2
+text = "Player 1"
+horizontal_alignment = 1
+
+[node name="StackLabel" type="Label" parent="TableSurface/Seat0/Content"]
+layout_mode = 2
+text = "Stack 1000"
+horizontal_alignment = 1
+
+[node name="CardRow" type="HBoxContainer" parent="TableSurface/Seat0/Content"]
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="Seat1" type="PanelContainer" parent="TableSurface"]
+offset_left = 24.0
+offset_top = 270.0
+offset_right = 204.0
+offset_bottom = 404.0
+theme_override_styles/panel = SubResource("StyleSeat")
+script = ExtResource("2_seat")
+seat_index = 1
+
+[node name="Content" type="VBoxContainer" parent="TableSurface/Seat1"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="TableSurface/Seat1/Content"]
+layout_mode = 2
+text = "Player 2"
+horizontal_alignment = 1
+
+[node name="StackLabel" type="Label" parent="TableSurface/Seat1/Content"]
+layout_mode = 2
+text = "Stack 1000"
+horizontal_alignment = 1
+
+[node name="CardRow" type="HBoxContainer" parent="TableSurface/Seat1/Content"]
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="Seat2" type="PanelContainer" parent="TableSurface"]
+offset_left = 444.0
+offset_top = 270.0
+offset_right = 624.0
+offset_bottom = 404.0
+theme_override_styles/panel = SubResource("StyleSeat")
+script = ExtResource("2_seat")
+seat_index = 2
+
+[node name="Content" type="VBoxContainer" parent="TableSurface/Seat2"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="TableSurface/Seat2/Content"]
+layout_mode = 2
+text = "Player 3"
+horizontal_alignment = 1
+
+[node name="StackLabel" type="Label" parent="TableSurface/Seat2/Content"]
+layout_mode = 2
+text = "Stack 1000"
+horizontal_alignment = 1
+
+[node name="CardRow" type="HBoxContainer" parent="TableSurface/Seat2/Content"]
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="Seat3" type="PanelContainer" parent="TableSurface"]
+offset_left = 234.0
+offset_top = 530.0
+offset_right = 414.0
+offset_bottom = 664.0
+theme_override_styles/panel = SubResource("StyleSeat")
+script = ExtResource("2_seat")
+seat_index = 3
+
+[node name="Content" type="VBoxContainer" parent="TableSurface/Seat3"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="TableSurface/Seat3/Content"]
+layout_mode = 2
+text = "Player 4"
+horizontal_alignment = 1
+
+[node name="StackLabel" type="Label" parent="TableSurface/Seat3/Content"]
+layout_mode = 2
+text = "Stack 1000"
+horizontal_alignment = 1
+
+[node name="CardRow" type="HBoxContainer" parent="TableSurface/Seat3/Content"]
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="DeckCaption" type="Label" parent="."]
+offset_left = 258.0
+offset_top = 940.0
+offset_right = 462.0
+offset_bottom = 970.0
+text = "DRAG TOP CARD"
+horizontal_alignment = 1
+
+[node name="CardDrag" type="PanelContainer" parent="."]
+z_index = 20
+offset_left = 318.0
+offset_top = 976.0
+offset_right = 402.0
+offset_bottom = 1092.0
+theme_override_styles/panel = SubResource("StyleCard")
+script = ExtResource("3_card")
+
+[node name="Label" type="Label" parent="CardDrag"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.08, 0.09, 0.11, 1)
+theme_override_font_sizes/font_size = 22
+text = "AS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StartHandButton" type="Button" parent="."]
+offset_left = 54.0
+offset_top = 1124.0
+offset_right = 344.0
+offset_bottom = 1188.0
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleButton")
+text = "START HAND"
+
+[node name="AdvanceButton" type="Button" parent="."]
+offset_left = 376.0
+offset_top = 1124.0
+offset_right = 666.0
+offset_bottom = 1188.0
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleButton")
+text = "ADVANCE PHASE"
+
+[node name="PrototypeNote" type="Label" parent="."]
+offset_left = 46.0
+offset_top = 1204.0
+offset_right = 674.0
+offset_bottom = 1262.0
+text = "Placeholder visuals only. Core state and touch interaction are the product foundation."
+horizontal_alignment = 1
+autowrap_mode = 2
