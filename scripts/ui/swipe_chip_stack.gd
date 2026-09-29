@@ -61,7 +61,8 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton:
 		var mouse_button: InputEventMouseButton = event
 		if mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
-			_begin_sweep(MOUSE_POINTER_ID, mouse_button.position)
+			# Keep press/move/release in the same viewport coordinate space.
+			_begin_sweep(MOUSE_POINTER_ID, get_viewport().get_mouse_position())
 			accept_event()
 
 func _input(event: InputEvent) -> void:
