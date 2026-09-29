@@ -309,7 +309,7 @@ layout_mode = 2
 theme_override_constants/separation = 4
 alignment = 1
 
-[node name="ChipStack0" type="PanelContainer" parent="TableSurface"]
+[node name="ChipStack0" type="Button" parent="TableSurface"]
 z_index = 8
 offset_left = 205.0
 offset_top = 470.0
@@ -325,7 +325,7 @@ text = "20"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ChipStack1" type="PanelContainer" parent="TableSurface"]
+[node name="ChipStack1" type="Button" parent="TableSurface"]
 z_index = 8
 offset_left = 246.0
 offset_top = 258.0
@@ -341,7 +341,7 @@ text = "40"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ChipStack2" type="PanelContainer" parent="TableSurface"]
+[node name="ChipStack2" type="Button" parent="TableSurface"]
 z_index = 8
 offset_left = 332.0
 offset_top = 258.0
@@ -357,7 +357,7 @@ text = "0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ChipStack3" type="PanelContainer" parent="TableSurface"]
+[node name="ChipStack3" type="Button" parent="TableSurface"]
 z_index = 8
 offset_left = 373.0
 offset_top = 470.0
@@ -381,7 +381,7 @@ offset_bottom = 970.0
 text = "CLICK / TAP CARD"
 horizontal_alignment = 1
 
-[node name="CardDrag" type="PanelContainer" parent="."]
+[node name="CardDrag" type="Button" parent="."]
 z_index = 20
 offset_left = 318.0
 offset_top = 976.0
