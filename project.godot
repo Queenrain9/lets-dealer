@@ -1,0 +1,31 @@
+[application]
+
+config/name="LET'S DEALER"
+config/description="Mobile dealer-action game core gameplay prototype"
+run/main_scene="res://scenes/table_test.tscn"
+
+[display]
+
+[display/window]
+size/viewport_width=720
+size/viewport_height=1280
+size/window_width_override=360
+size/window_height_override=640
+stretch/mode="canvas_items"
+handheld/orientation=1
+
+[input_devices]
+
+[input_devices/pointing]
+emulate_mouse_from_touch=true
+emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+
+[debug]
+
+settings/stdout/print_fps=false
