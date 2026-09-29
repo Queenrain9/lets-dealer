@@ -1,6 +1,6 @@
 extends Control
 
-const BUILD_ID: String = "npc-dialogue-stage6-v0.7"
+const BUILD_ID: String = "wireframe-reconcile-stage7-v0.8"
 
 const BG: Color = Color("0d1218")
 const PANEL: Color = Color("171e27")
@@ -73,10 +73,13 @@ var max_flow_combo: int = 0
 var tips: int = 0
 var cash: int = 12480
 
+var top_bar: Panel
 var home_layer: Control
 var game_layer: Control
 var complete_layer: Control
+var career_layer: Control
 
+var brand_label: Label
 var level_label: Label
 var cash_label: Label
 var rep_label: Label
@@ -153,47 +156,48 @@ func _build_ui() -> void:
 	_build_home()
 	_build_game()
 	_build_complete()
+	_build_career()
 	_build_feedback()
 
 
 func _build_top_bar() -> void:
-	var top := Panel.new()
-	top.position = Vector2(18, 16)
-	top.size = Vector2(684, 76)
-	top.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 15))
-	add_child(top)
+	top_bar = Panel.new()
+	top_bar.position = Vector2(18, 16)
+	top_bar.size = Vector2(684, 76)
+	top_bar.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 15))
+	add_child(top_bar)
 
-	var title := Label.new()
-	title.position = Vector2(16, 8)
-	title.size = Vector2(180, 25)
-	title.text = "LET'S DEALER"
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", TEXT)
-	top.add_child(title)
+	brand_label = Label.new()
+	brand_label.position = Vector2(16, 8)
+	brand_label.size = Vector2(205, 25)
+	brand_label.text = "LET'S DEALER"
+	brand_label.add_theme_font_size_override("font_size", 20)
+	brand_label.add_theme_color_override("font_color", TEXT)
+	top_bar.add_child(brand_label)
 
 	level_label = Label.new()
 	level_label.position = Vector2(16, 39)
 	level_label.size = Vector2(220, 22)
-	level_label.text = "LV.1  신입 딜러"
+	level_label.text = "LV.1 · 신입 딜러"
 	level_label.add_theme_font_size_override("font_size", 13)
 	level_label.add_theme_color_override("font_color", MUTED)
-	top.add_child(level_label)
+	top_bar.add_child(level_label)
 
 	cash_label = Label.new()
-	cash_label.position = Vector2(234, 13)
-	cash_label.size = Vector2(140, 22)
+	cash_label.position = Vector2(228, 13)
+	cash_label.size = Vector2(150, 22)
 	cash_label.text = "TIP  12,480"
 	cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cash_label.add_theme_color_override("font_color", ACCENT)
-	top.add_child(cash_label)
+	top_bar.add_child(cash_label)
 
 	rep_label = Label.new()
-	rep_label.position = Vector2(234, 42)
-	rep_label.size = Vector2(140, 20)
+	rep_label.position = Vector2(228, 42)
+	rep_label.size = Vector2(150, 20)
 	rep_label.text = "REP  120"
 	rep_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rep_label.add_theme_color_override("font_color", MUTED)
-	top.add_child(rep_label)
+	top_bar.add_child(rep_label)
 
 	accuracy_label = Label.new()
 	accuracy_label.position = Vector2(382, 10)
@@ -201,7 +205,7 @@ func _build_top_bar() -> void:
 	accuracy_label.text = "ACC 100%"
 	accuracy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	accuracy_label.add_theme_color_override("font_color", TEXT)
-	top.add_child(accuracy_label)
+	top_bar.add_child(accuracy_label)
 
 	flow_label = Label.new()
 	flow_label.position = Vector2(480, 10)
@@ -209,7 +213,7 @@ func _build_top_bar() -> void:
 	flow_label.text = "FLOW x0"
 	flow_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	flow_label.add_theme_color_override("font_color", ACCENT)
-	top.add_child(flow_label)
+	top_bar.add_child(flow_label)
 
 	timer_label = Label.new()
 	timer_label.position = Vector2(592, 9)
@@ -219,7 +223,7 @@ func _build_top_bar() -> void:
 	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	timer_label.add_theme_font_size_override("font_size", 16)
 	timer_label.add_theme_color_override("font_color", GOOD)
-	top.add_child(timer_label)
+	top_bar.add_child(timer_label)
 
 
 func _build_home() -> void:
@@ -229,75 +233,133 @@ func _build_home() -> void:
 	add_child(home_layer)
 
 	var hero := Panel.new()
-	hero.position = Vector2(24, 34)
-	hero.size = Vector2(672, 466)
+	hero.position = Vector2(24, 20)
+	hero.size = Vector2(672, 650)
 	hero.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 24))
 	home_layer.add_child(hero)
 
-	var badge := Label.new()
-	badge.position = Vector2(24, 22)
-	badge.size = Vector2(620, 26)
-	badge.text = "ROOKIE HALL · NIGHT SHIFT"
-	badge.add_theme_color_override("font_color", ACCENT)
-	badge.add_theme_font_size_override("font_size", 13)
-	hero.add_child(badge)
+	var venue_tag := Label.new()
+	venue_tag.position = Vector2(24, 18)
+	venue_tag.size = Vector2(180, 24)
+	venue_tag.text = "CURRENT VENUE"
+	venue_tag.add_theme_font_size_override("font_size", 11)
+	venue_tag.add_theme_color_override("font_color", MUTED)
+	hero.add_child(venue_tag)
 
 	var h1 := Label.new()
-	h1.position = Vector2(24, 76)
-	h1.size = Vector2(620, 105)
-	h1.text = "첫 번째\n나이트 시프트"
-	h1.add_theme_font_size_override("font_size", 31)
+	h1.position = Vector2(24, 52)
+	h1.size = Vector2(400, 40)
+	h1.text = "RIVER PUB"
+	h1.add_theme_font_size_override("font_size", 30)
 	h1.add_theme_color_override("font_color", TEXT)
 	hero.add_child(h1)
 
 	var desc := Label.new()
-	desc.position = Vector2(24, 198)
-	desc.size = Vector2(620, 110)
-	desc.text = "3 HANDS · 6 MAX\n팁과 FLOW를 유지하며 근무를 마치세요."
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 16)
+	desc.position = Vector2(24, 94)
+	desc.size = Vector2(430, 28)
+	desc.text = "EVENING SHIFT · LOCAL TABLE"
+	desc.add_theme_font_size_override("font_size", 14)
 	desc.add_theme_color_override("font_color", MUTED)
 	hero.add_child(desc)
 
+	var venue_art := Panel.new()
+	venue_art.position = Vector2(24, 142)
+	venue_art.size = Vector2(624, 300)
+	venue_art.add_theme_stylebox_override("panel", _style(Color("102b25"), Color("365d50"), 2, 20))
+	hero.add_child(venue_art)
+
+	var art_title := Label.new()
+	art_title.position = Vector2(24, 108)
+	art_title.size = Vector2(576, 42)
+	art_title.text = "RIVER PUB · TABLE"
+	art_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	art_title.add_theme_font_size_override("font_size", 22)
+	art_title.add_theme_color_override("font_color", ACCENT)
+	venue_art.add_child(art_title)
+
+	var art_sub := Label.new()
+	art_sub.position = Vector2(24, 154)
+	art_sub.size = Vector2(576, 50)
+	art_sub.text = "3 HANDS  ·  6 MAX\nLIVE TABLE"
+	art_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	art_sub.add_theme_font_size_override("font_size", 14)
+	art_sub.add_theme_color_override("font_color", MUTED)
+	venue_art.add_child(art_sub)
+
+	var goal := Panel.new()
+	goal.position = Vector2(24, 468)
+	goal.size = Vector2(296, 142)
+	goal.add_theme_stylebox_override("panel", _style(PANEL_2, LINE, 1, 16))
+	hero.add_child(goal)
+
+	var goal_kicker := Label.new()
+	goal_kicker.position = Vector2(16, 14)
+	goal_kicker.size = Vector2(250, 22)
+	goal_kicker.text = "TODAY GOAL"
+	goal_kicker.add_theme_font_size_override("font_size", 11)
+	goal_kicker.add_theme_color_override("font_color", MUTED)
+	goal.add_child(goal_kicker)
+
+	var goal_value := Label.new()
+	goal_value.position = Vector2(16, 55)
+	goal_value.size = Vector2(250, 48)
+	goal_value.text = "Accuracy 95%+"
+	goal_value.add_theme_font_size_override("font_size", 21)
+	goal_value.add_theme_color_override("font_color", TEXT)
+	goal.add_child(goal_value)
+
+	var reward := Panel.new()
+	reward.position = Vector2(328, 468)
+	reward.size = Vector2(320, 142)
+	reward.add_theme_stylebox_override("panel", _style(PANEL_2, LINE, 1, 16))
+	hero.add_child(reward)
+
+	var reward_kicker := Label.new()
+	reward_kicker.position = Vector2(16, 14)
+	reward_kicker.size = Vector2(270, 22)
+	reward_kicker.text = "SHIFT REWARD"
+	reward_kicker.add_theme_font_size_override("font_size", 11)
+	reward_kicker.add_theme_color_override("font_color", MUTED)
+	reward.add_child(reward_kicker)
+
+	var reward_value := Label.new()
+	reward_value.position = Vector2(16, 55)
+	reward_value.size = Vector2(270, 48)
+	reward_value.text = "TIP +1,200  /  REP +60"
+	reward_value.add_theme_font_size_override("font_size", 18)
+	reward_value.add_theme_color_override("font_color", ACCENT)
+	reward.add_child(reward_value)
+
 	var start := Button.new()
-	start.position = Vector2(24, 350)
-	start.size = Vector2(624, 80)
-	start.text = "SHIFT START"
-	start.add_theme_font_size_override("font_size", 20)
+	start.position = Vector2(72, 694)
+	start.size = Vector2(576, 74)
+	start.text = "근무 시작"
+	start.add_theme_font_size_override("font_size", 21)
 	start.add_theme_stylebox_override("normal", _style(ACCENT, ACCENT, 0, 16))
 	start.add_theme_color_override("font_color", Color("261b08"))
 	start.pressed.connect(_start_shift)
-	hero.add_child(start)
+	home_layer.add_child(start)
 
-	var info := Panel.new()
-	info.position = Vector2(24, 528)
-	info.size = Vector2(672, 330)
-	info.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 20))
-	home_layer.add_child(info)
+	var nav := Panel.new()
+	nav.position = Vector2(54, 804)
+	nav.size = Vector2(612, 104)
+	nav.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 20))
+	home_layer.add_child(nav)
 
-	var ititle := Label.new()
-	ititle.position = Vector2(20, 18)
-	ititle.size = Vector2(620, 28)
-	ititle.text = "SHIFT CONDITIONS"
-	ititle.add_theme_font_size_override("font_size", 18)
-	ititle.add_theme_color_override("font_color", TEXT)
-	info.add_child(ititle)
-
-	var lines: Array[String] = [
-		"3 HANDS",
-		"6 MAX TABLE",
-		"NPC PERSONALITIES",
-		"DYNAMIC REQUESTS",
-		"FLOW BONUS ACTIVE",
-	]
-	for i in range(lines.size()):
-		var item := Label.new()
-		item.position = Vector2(22, 68 + i * 48)
-		item.size = Vector2(620, 34)
-		item.text = "•  " + lines[i]
-		item.add_theme_font_size_override("font_size", 14)
-		item.add_theme_color_override("font_color", ACCENT if i == 0 else MUTED)
-		info.add_child(item)
+	var nav_names: Array[String] = ["HOME", "CAREER", "GUESTS", "GEAR"]
+	for i in range(nav_names.size()):
+		var button := Button.new()
+		button.position = Vector2(12 + i * 148, 12)
+		button.size = Vector2(140, 80)
+		button.text = nav_names[i]
+		button.flat = true
+		button.add_theme_font_size_override("font_size", 12)
+		button.add_theme_color_override("font_color", ACCENT if i == 0 else MUTED)
+		if i == 1:
+			button.pressed.connect(_show_career)
+		elif i >= 2:
+			button.disabled = true
+		nav.add_child(button)
 
 
 func _build_game() -> void:
@@ -669,63 +731,227 @@ func _build_history_panel() -> void:
 
 func _build_complete() -> void:
 	complete_layer = Control.new()
-	complete_layer.position = Vector2(0, 104)
-	complete_layer.size = Vector2(720, 1176)
+	complete_layer.position = Vector2.ZERO
+	complete_layer.size = Vector2(720, 1280)
 	complete_layer.visible = false
 	add_child(complete_layer)
 
-	var panel := Panel.new()
-	panel.name = "Panel"
-	panel.position = Vector2(46, 130)
-	panel.size = Vector2(628, 610)
-	panel.add_theme_stylebox_override("panel", _style(PANEL, ACCENT, 2, 24))
-	complete_layer.add_child(panel)
-
 	var title := Label.new()
-	title.position = Vector2(24, 34)
-	title.size = Vector2(580, 50)
+	title.position = Vector2(52, 66)
+	title.size = Vector2(616, 52)
 	title.text = "SHIFT COMPLETE"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", ACCENT)
-	panel.add_child(title)
+	title.add_theme_font_size_override("font_size", 32)
+	title.add_theme_color_override("font_color", TEXT)
+	complete_layer.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.position = Vector2(24, 95)
-	subtitle.size = Vector2(580, 40)
-	subtitle.text = "ROOKIE HALL · NIGHT SHIFT"
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 16)
+	subtitle.position = Vector2(52, 118)
+	subtitle.size = Vector2(616, 30)
+	subtitle.text = "River Pub · Evening Shift"
+	subtitle.add_theme_font_size_override("font_size", 15)
 	subtitle.add_theme_color_override("font_color", MUTED)
-	panel.add_child(subtitle)
+	complete_layer.add_child(subtitle)
+
+	var panel := Panel.new()
+	panel.name = "Panel"
+	panel.position = Vector2(52, 184)
+	panel.size = Vector2(616, 312)
+	panel.add_theme_stylebox_override("panel", _style(PANEL, LINE, 1, 22))
+	complete_layer.add_child(panel)
 
 	var result := Label.new()
 	result.name = "Result"
-	result.position = Vector2(54, 170)
-	result.size = Vector2(520, 235)
+	result.position = Vector2(28, 26)
+	result.size = Vector2(560, 260)
 	result.text = ""
 	result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	result.add_theme_font_size_override("font_size", 19)
+	result.add_theme_font_size_override("font_size", 18)
 	result.add_theme_color_override("font_color", TEXT)
 	panel.add_child(result)
 
-	var replay := Button.new()
-	replay.position = Vector2(54, 452)
-	replay.size = Vector2(520, 70)
-	replay.text = "다시 근무하기"
-	replay.add_theme_font_size_override("font_size", 18)
-	replay.add_theme_stylebox_override("normal", _style(ACCENT, ACCENT, 0, 14))
-	replay.add_theme_color_override("font_color", Color("261b08"))
-	replay.pressed.connect(_start_shift)
-	panel.add_child(replay)
+	var progression := Panel.new()
+	progression.position = Vector2(52, 530)
+	progression.size = Vector2(616, 174)
+	progression.add_theme_stylebox_override("panel", _style(PANEL_2, LINE, 1, 18))
+	complete_layer.add_child(progression)
 
-	var home := Button.new()
-	home.position = Vector2(54, 538)
-	home.size = Vector2(520, 50)
-	home.text = "HOME"
-	home.pressed.connect(_show_home)
-	panel.add_child(home)
+	var progress_title := Label.new()
+	progress_title.position = Vector2(20, 18)
+	progress_title.size = Vector2(300, 24)
+	progress_title.text = "DEALER EXP"
+	progress_title.add_theme_font_size_override("font_size", 12)
+	progress_title.add_theme_color_override("font_color", MUTED)
+	progression.add_child(progress_title)
+
+	var progress_bar := ProgressBar.new()
+	progress_bar.position = Vector2(20, 60)
+	progress_bar.size = Vector2(576, 24)
+	progress_bar.min_value = 0
+	progress_bar.max_value = 1000
+	progress_bar.value = 420
+	progress_bar.show_percentage = false
+	progression.add_child(progress_bar)
+
+	var progress_copy := Label.new()
+	progress_copy.position = Vector2(20, 104)
+	progress_copy.size = Vector2(576, 42)
+	progress_copy.text = "LV.1  →  NEXT RANK 580 EXP"
+	progress_copy.add_theme_font_size_override("font_size", 16)
+	progress_copy.add_theme_color_override("font_color", TEXT)
+	progression.add_child(progress_copy)
+
+	var unlock := Panel.new()
+	unlock.position = Vector2(52, 734)
+	unlock.size = Vector2(616, 150)
+	unlock.add_theme_stylebox_override("panel", _style(PANEL, ACCENT, 1, 18))
+	complete_layer.add_child(unlock)
+
+	var unlock_title := Label.new()
+	unlock_title.position = Vector2(20, 18)
+	unlock_title.size = Vector2(260, 22)
+	unlock_title.text = "NEXT UNLOCK"
+	unlock_title.add_theme_font_size_override("font_size", 11)
+	unlock_title.add_theme_color_override("font_color", MUTED)
+	unlock.add_child(unlock_title)
+
+	var unlock_name := Label.new()
+	unlock_name.position = Vector2(20, 54)
+	unlock_name.size = Vector2(400, 32)
+	unlock_name.text = "REGULAR NIGHT"
+	unlock_name.add_theme_font_size_override("font_size", 21)
+	unlock_name.add_theme_color_override("font_color", TEXT)
+	unlock.add_child(unlock_name)
+
+	var unlock_desc := Label.new()
+	unlock_desc.position = Vector2(20, 92)
+	unlock_desc.size = Vector2(560, 28)
+	unlock_desc.text = "faster table · more guests · higher tips"
+	unlock_desc.add_theme_font_size_override("font_size", 13)
+	unlock_desc.add_theme_color_override("font_color", MUTED)
+	unlock.add_child(unlock_desc)
+
+	var cont := Button.new()
+	cont.position = Vector2(100, 926)
+	cont.size = Vector2(520, 72)
+	cont.text = "CONTINUE"
+	cont.add_theme_font_size_override("font_size", 18)
+	cont.add_theme_stylebox_override("normal", _style(ACCENT, ACCENT, 0, 14))
+	cont.add_theme_color_override("font_color", Color("261b08"))
+	cont.pressed.connect(_show_career)
+	complete_layer.add_child(cont)
+
+	var replay := Button.new()
+	replay.position = Vector2(208, 1014)
+	replay.size = Vector2(304, 48)
+	replay.text = "다시 근무하기"
+	replay.flat = true
+	replay.add_theme_color_override("font_color", MUTED)
+	replay.pressed.connect(_start_shift)
+	complete_layer.add_child(replay)
+
+
+func _build_career() -> void:
+	career_layer = Control.new()
+	career_layer.position = Vector2.ZERO
+	career_layer.size = Vector2(720, 1280)
+	career_layer.visible = false
+	add_child(career_layer)
+
+	var title := Label.new()
+	title.position = Vector2(52, 58)
+	title.size = Vector2(420, 44)
+	title.text = "CAREER"
+	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_color_override("font_color", TEXT)
+	career_layer.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.position = Vector2(52, 104)
+	subtitle.size = Vector2(420, 28)
+	subtitle.text = "Dealer Path"
+	subtitle.add_theme_font_size_override("font_size", 14)
+	subtitle.add_theme_color_override("font_color", MUTED)
+	career_layer.add_child(subtitle)
+
+	var venues: Array[Dictionary] = [
+		{"level": "LV.1", "name": "RIVER PUB", "desc": "기본 딜링", "state": "CURRENT"},
+		{"level": "LV.5", "name": "REGULAR NIGHT", "desc": "더 빠른 진행", "state": "NEXT"},
+		{"level": "LV.10", "name": "VIP TABLE", "desc": "정확도 요구 ↑", "state": "LOCKED"},
+		{"level": "LV.20", "name": "TOURNAMENT FINAL", "desc": "최종 무대", "state": "LOCKED"},
+	]
+
+	for i in range(venues.size()):
+		var data: Dictionary = venues[i]
+		var card := Panel.new()
+		card.position = Vector2(114, 172 + i * 214)
+		card.size = Vector2(554, 180)
+		card.add_theme_stylebox_override("panel", _style(PANEL, ACCENT if i == 0 else LINE, 2 if i == 0 else 1, 18))
+		career_layer.add_child(card)
+
+		var preview := Panel.new()
+		preview.position = Vector2(18, 22)
+		preview.size = Vector2(158, 118)
+		preview.add_theme_stylebox_override("panel", _style(Color("102b25"), Color("365d50"), 1, 14))
+		card.add_child(preview)
+
+		var preview_text := Label.new()
+		preview_text.position = Vector2(10, 38)
+		preview_text.size = Vector2(138, 40)
+		preview_text.text = "VENUE"
+		preview_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		preview_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		preview_text.add_theme_color_override("font_color", MUTED)
+		preview.add_child(preview_text)
+
+		var lv := Label.new()
+		lv.position = Vector2(204, 22)
+		lv.size = Vector2(100, 20)
+		lv.text = String(data["level"])
+		lv.add_theme_font_size_override("font_size", 12)
+		lv.add_theme_color_override("font_color", MUTED)
+		card.add_child(lv)
+
+		var name := Label.new()
+		name.position = Vector2(204, 52)
+		name.size = Vector2(320, 34)
+		name.text = String(data["name"])
+		name.add_theme_font_size_override("font_size", 20)
+		name.add_theme_color_override("font_color", TEXT)
+		card.add_child(name)
+
+		var desc := Label.new()
+		desc.position = Vector2(204, 92)
+		desc.size = Vector2(320, 24)
+		desc.text = String(data["desc"])
+		desc.add_theme_font_size_override("font_size", 13)
+		desc.add_theme_color_override("font_color", MUTED)
+		card.add_child(desc)
+
+		var state := Label.new()
+		state.position = Vector2(204, 128)
+		state.size = Vector2(190, 24)
+		state.text = String(data["state"])
+		state.add_theme_font_size_override("font_size", 12)
+		state.add_theme_color_override("font_color", ACCENT if i <= 1 else MUTED)
+		card.add_child(state)
+
+		if i == 0:
+			var play := Button.new()
+			play.position = Vector2(406, 118)
+			play.size = Vector2(126, 42)
+			play.text = "SELECT"
+			play.pressed.connect(_start_shift)
+			card.add_child(play)
+
+	var back := Button.new()
+	back.position = Vector2(52, 1082)
+	back.size = Vector2(180, 52)
+	back.text = "← HOME"
+	back.flat = true
+	back.add_theme_color_override("font_color", MUTED)
+	back.pressed.connect(_show_home)
+	career_layer.add_child(back)
 
 
 func _build_feedback() -> void:
