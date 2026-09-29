@@ -15,10 +15,12 @@ func _ready() -> void:
 func arm(card_id: String) -> void:
 	card_label.text = card_id
 	visible = true
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	reset_preview()
 
 func disarm() -> void:
 	visible = false
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reset_preview()
 
 func begin_preview() -> void:
