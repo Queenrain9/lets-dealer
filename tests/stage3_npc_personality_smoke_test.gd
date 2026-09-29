@@ -71,7 +71,6 @@ func _run() -> int:
 	var runtime_text: String = runtime_file.get_as_text()
 
 	for required in [
-		"seat_trait_labels",
 		"NPCRoster.build",
 		"LiveShiftScenario.build(shift_seed, roster)",
 		"warning_line",
@@ -83,6 +82,8 @@ func _run() -> int:
 
 	if runtime_text.contains("choice_buttons"):
 		return _fail("Quiz UI returned during Stage 3.")
+	if runtime_text.contains("seat_trait_labels"):
+		return _fail("NPC personality labels should not be exposed as permanent tutorial UI.")
 
 	print("LET'S DEALER stage 3 NPC personality smoke test passed.")
 	return 0
