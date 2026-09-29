@@ -378,7 +378,7 @@ offset_left = 238.0
 offset_top = 940.0
 offset_right = 482.0
 offset_bottom = 970.0
-text = "SWIPE TOP CARD"
+text = "CLICK / TAP CARD"
 horizontal_alignment = 1
 
 [node name="CardDrag" type="PanelContainer" parent="."]
@@ -421,6 +421,6 @@ offset_left = 46.0
 offset_top = 1204.0
 offset_right = 674.0
 offset_bottom = 1262.0
-text = "Deal by swipe. Collect bets by sweeping chip stacks into the center pot."
+text = "Prototype input: click/tap cards and betting stacks. No precision required."
 horizontal_alignment = 1
 autowrap_mode = 2
