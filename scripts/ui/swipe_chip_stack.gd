@@ -18,10 +18,14 @@ func _ready() -> void:
 func arm(amount: int) -> void:
 	amount_label.text = str(amount)
 	visible = amount > 0
+	mouse_filter = (
+		Control.MOUSE_FILTER_STOP if visible else Control.MOUSE_FILTER_IGNORE
+	)
 	reset_preview()
 
 func disarm() -> void:
 	visible = false
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reset_preview()
 
 func begin_preview() -> void:
