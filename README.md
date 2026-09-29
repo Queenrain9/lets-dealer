@@ -2,7 +2,7 @@
 
 Godot 4.x 기반 모바일 딜러 액션 게임 프로젝트입니다.
 
-이 저장소의 목표는 화면 목업이 아니라, 실제 iOS App Store 출시까지 확장 가능한 게임 구조를 만드는 것입니다. 현재 단계는 **Core Gameplay Prototype 0.1**이며 최종 아트보다 입력, 상태, 인터랙션, 확장 구조를 우선합니다.
+이 저장소의 목표는 화면 목업이 아니라, 실제 iOS App Store 출시까지 확장 가능한 게임 구조를 만드는 것입니다. 현재 단계는 **Core Gameplay Prototype 0.2 — Chip & Pot Interaction**이며 최종 아트보다 입력, 상태, 인터랙션, 확장 구조를 우선합니다.
 
 ## 현재 플레이 가능한 범위
 
@@ -13,11 +13,14 @@ Godot 4.x 기반 모바일 딜러 액션 게임 프로젝트입니다.
 3. 제스처 방향이 플레이어를 가리키면 카드는 해당 플레이어 앞의 별도 Card Zone으로 자동 스냅됩니다.
 4. 카드 위에 정확히 내려놓는 조작은 요구하지 않습니다. 방향을 잘못 보내면 Mistake가 올라가고 Combo가 초기화됩니다.
 5. 올바른 배분은 Perfect와 Combo에 기록됩니다.
-6. 홀카드 배분이 끝나면 최소 상태 머신이 Betting → Flop → Turn → River → Showdown → Payout → Complete로 진행됩니다.
-7. Flop / Turn / River 카드는 실제 덱 상태에서 보드로 이동합니다.
-8. Complete 후 다음 핸드를 시작할 수 있습니다.
+6. 홀카드 배분이 끝나면 고정 테스트 시나리오에 따라 실제 베팅 칩이 각 플레이어 앞에 생성됩니다.
+7. 현재 테스트 시나리오는 Player 1 = 20, Player 2 = 40, Player 3 = Fold, Player 4 = 40입니다.
+8. 각 베팅 칩 스택을 중앙 POT 방향으로 짧게 쓸어 모으면 실제 `PotState.main_pot`에 금액이 합산됩니다.
+9. 모든 베팅 칩을 걷기 전에는 FLOP을 열 수 없습니다.
+10. 전부 수거하면 POT 100이 되고 **OPEN FLOP**이 활성화됩니다.
+11. 이후 Flop → Turn → River → Showdown → Payout → Complete 상태 훅을 계속 테스트할 수 있습니다.
 
-> Betting, chip collection, pot calculation, showdown ranking, winner payout은 아직 **의도적으로 placeholder**입니다. 버튼으로 상태 훅만 통과합니다.
+> Postflop betting, hand ranking, winner determination, manual winner payout은 아직 **의도적으로 placeholder**입니다.
 
 ## 구조
 
@@ -28,7 +31,8 @@ lets-dealer/
 │  └─ table_test.tscn
 ├─ scripts/
 │  ├─ config/
-│  │  └─ table_config.gd
+│  │  ├─ table_config.gd
+│  │  └─ prototype_hand_config.gd
 │  ├─ core/
 │  │  ├─ dealer_game_state.gd
 │  │  ├─ hand_state.gd
@@ -40,10 +44,13 @@ lets-dealer/
 │  │  └─ table_test.gd
 │  └─ ui/
 │     ├─ draggable_card.gd
+│     ├─ swipe_chip_stack.gd
 │     └─ seat_view.gd
 └─ data/
-   └─ table_configs/
-      └─ prototype_table.tres
+   ├─ table_configs/
+   │  └─ prototype_table.tres
+   └─ prototype_hands/
+      └─ core_hand_01.tres
 ```
 
 ## 설계 원칙
@@ -63,6 +70,8 @@ lets-dealer/
 - 마우스 press / motion / release
 
 현재 딜링 조작 원칙은 **정밀 드래그앤드롭이 아니라 짧은 방향 제스처 + 자동 스냅**입니다.
+
+베팅 칩 수거도 같은 철학을 따릅니다. 칩을 정확한 좌표에 하나씩 옮기는 것이 아니라, 플레이어 앞의 베팅 스택을 중앙 POT 방향으로 짧게 쓸면 자동으로 수거됩니다. 조작 정밀도보다 **어떤 딜러 업무를 언제 처리해야 하는지**가 게임의 난이도가 되도록 설계합니다.
 
 카드는 손가락이나 마우스를 따라 좌석까지 끝까지 이동하지 않습니다. 제스처 중에는 카드가 살짝 끌리는 피드백만 보여주고, 손을 놓으면 방향을 판정해 해당 Card Zone으로 짧게 이동합니다. 따라서 조작 자체의 정밀도가 게임 난이도의 중심이 되지 않도록 설계했습니다.
 
@@ -105,25 +114,33 @@ lets-dealer/
 - 승자 미결정 Showdown
 - 실제 칩이 없는 Betting / Payout
 
+## 현재 0.2에서 구현된 것
+
+- 고정 preflop betting scenario를 별도 Resource로 분리
+- PlayerSeat의 stack / current_bet / hand_contribution 추적
+- 베팅 시 실제 stack 차감
+- 플레이어별 betting chip stack 표시
+- Touch / Pointer 기반 중앙 POT 방향 chip sweep
+- 수거한 금액을 실제 PotState.main_pot에 합산
+- 모든 베팅 칩 수거 전 FLOP 진행 차단
+- POT 100 완성 후 OPEN FLOP 활성화
+- 카드 딜링 + 칩 수거가 Perfect / Combo 결과에 함께 반영
+- Godot 4.7.2 자동 테스트에서 Core, 연속 카드 딜, 카드 원위치, Chip/Pot UI 흐름 검증
+
 ## 다음 개발 단계
 
-다음 milestone은 **Chip & Pot Interaction 0.2**입니다.
+다음 milestone은 **Board Dealing 0.3**입니다.
 
 우선순위:
 
-1. 베팅 칩 데이터와 시각 오브젝트 생성
-2. 칩 또는 칩 스택 드래그
-3. 좌석 앞 베팅 칩을 중앙 Pot으로 모으기
-4. PotState와 실제 금액 동기화
-5. All-in contribution 추적
-6. Main Pot / Side Pot 분리
-7. 보드 오픈을 수동 dealer action으로 전환
-8. 실제 Hand Evaluator 연결
-9. 승자 및 split pot 계산
-10. 플레이어가 직접 정확한 칩을 지급하고 판정
-11. 정확도 / 속도 / 실수 / Combo를 Hand 결과로 확정
+1. FLOP 버튼을 제거하고 딜러가 직접 보드 카드를 오픈하는 조작으로 전환
+2. Burn Card 상태 도입
+3. Flop 3장 / Turn 1장 / River 1장을 실제 dealer action으로 처리
+4. Board Zone과 Deck Zone의 조작 경계 분리
+5. Street별 betting hook 구조 정리
+6. 이후 동일한 Chip & Pot 수거 루프를 postflop에도 재사용할 수 있게 확장
 
-그 다음에야 Dealer EXP, Reputation, Tip, Career/Progression, 손님 성격, 멀티태스킹 이벤트를 붙입니다.
+그 다음은 **Showdown & Winner 0.4 → Manual Payout 0.5 → 한 핸드 완전 플레이 가능 0.6** 순서로 진행합니다.
 
 ## 실행
 
@@ -143,6 +160,9 @@ Godot 4.x에서 저장소 루트를 프로젝트로 Import한 뒤 실행합니�
 - 올바른 좌석 순서로 8장 배분
 - Betting → Flop → Turn → River → Showdown → Payout → Complete 전이
 - Board 5장 생성
+- Preflop betting stack 3개 생성 및 총 100 수거
+- 모든 칩 수거 전 FLOP 진행 차단
+- POT 100 완료 후 FLOP 진행 가능
 - Perfect / Mistake 결과 상태 확인
 
 이 smoke test는 최종 게임 플레이 테스트를 대체하지 않으며, 핵심 상태 구조가 깨지는 회귀를 빠르게 잡기 위한 최소 안전망입니다.
