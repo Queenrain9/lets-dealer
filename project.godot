@@ -7,7 +7,7 @@ config_version=5
 
 config/name="LET'S DEALER"
 config/description="Mobile dealer-action game core gameplay prototype"
-run/main_scene="res://scenes/table_test.tscn"
+run/main_scene="res://scenes/input_baseline.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [display]
