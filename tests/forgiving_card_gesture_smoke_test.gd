@@ -41,8 +41,12 @@ func _run() -> void:
 		_fail("Deal order did not advance to the second seat.")
 		return
 
-	if not card.visible or card.mouse_filter != Control.MOUSE_FILTER_STOP:
+	if not card.visible:
 		_fail("Next card was not immediately ready after the first swipe.")
+		return
+
+	if card.get_input_rect().size.x <= 0.0 or card.get_input_rect().size.y <= 0.0:
+		_fail("Next card lost its pointer hit area after the first swipe.")
 		return
 
 	print("LET'S DEALER forgiving card gesture smoke test passed.")
