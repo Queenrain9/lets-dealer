@@ -102,7 +102,7 @@ func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> 
 	var target_seat_index: int = _resolve_swipe_target(start_position, end_position)
 	if target_seat_index < 0:
 		card_drag.snap_home()
-		hint_label.text = "Swipe upward toward a player, then release."
+		hint_label.text = "Swipe toward a player, then release."
 		return
 
 	var dealt: bool = game.try_deal_card_to_seat(target_seat_index)
@@ -113,15 +113,20 @@ func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> 
 
 	var seat: PlayerSeat = game.table.get_seat(target_seat_index)
 	var dealt_card_id: String = String(seat.hole_cards.back())
+	var flight_start: Vector2 = card_drag.global_position
 
-	await _animate_card_to_zone(target_seat_index, dealt_card_id)
+	# The deck card must be ready for the next deal immediately.
+	# A separate transient visual handles the flight animation so input is never
+	# locked behind a tween/await from the previous card.
+	card_drag.snap_home()
+	_arm_next_card()
+	_animate_dealt_card_to_zone(target_seat_index, dealt_card_id, flight_start)
 
 	if game.table.hand.phase == HandState.Phase.DEALING:
 		hint_label.text = "Good. Swipe the next card toward the highlighted player."
 	else:
 		hint_label.text = "Hole cards complete. Prototype betting phase is ready."
 
-	_arm_next_card()
 	_refresh_ui()
 
 func _resolve_swipe_target(start_position: Vector2, end_position: Vector2) -> int:
@@ -149,19 +154,46 @@ func _resolve_swipe_target(start_position: Vector2, end_position: Vector2) -> in
 
 	return best_index
 
-func _animate_card_to_zone(seat_index: int, card_id: String) -> void:
+func _animate_dealt_card_to_zone(
+	seat_index: int,
+	card_id: String,
+	start_global_position: Vector2
+) -> void:
 	var zone: Control = card_zone_panels[seat_index]
-	var target_center: Vector2 = zone.get_global_rect().get_center()
-	var target_position: Vector2 = target_center - (card_drag.size * 0.5)
+	var flying_card: PanelContainer = _build_card_panel(card_id, card_drag.size)
+	add_child(flying_card)
+	flying_card.z_index = 19
+	flying_card.global_position = start_global_position
 
-	card_drag.set_interaction_enabled(false)
-	await card_drag.fly_to(target_position, 0.15)
+	var target_center: Vector2 = zone.get_global_rect().get_center()
+	var target_position: Vector2 = target_center - (flying_card.size * 0.5)
+
+	var tween: Tween = create_tween()
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(flying_card, "global_position", target_position, 0.13)
+	tween.finished.connect(
+		_finish_dealt_card_animation.bind(flying_card, seat_index, card_id),
+		CONNECT_ONE_SHOT
+	)
+
+func _finish_dealt_card_animation(
+	flying_card: Control,
+	seat_index: int,
+	card_id: String
+) -> void:
+	if is_instance_valid(flying_card):
+		flying_card.queue_free()
 	_add_card_to_zone(seat_index, card_id)
-	card_drag.snap_home()
 
 func _add_card_to_zone(seat_index: int, card_id: String) -> void:
+	var card_panel: PanelContainer = _build_card_panel(card_id, Vector2(44, 58))
+	card_rows[seat_index].add_child(card_panel)
+
+func _build_card_panel(card_id: String, card_size: Vector2) -> PanelContainer:
 	var card_panel: PanelContainer = PanelContainer.new()
-	card_panel.custom_minimum_size = Vector2(44, 58)
+	card_panel.custom_minimum_size = card_size
+	card_panel.size = card_size
 	card_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var card_style: StyleBoxFlat = StyleBoxFlat.new()
@@ -184,7 +216,7 @@ func _add_card_to_zone(seat_index: int, card_id: String) -> void:
 	card_label.add_theme_color_override("font_color", Color(0.08, 0.09, 0.11, 1.0))
 	card_panel.add_child(card_label)
 
-	card_rows[seat_index].add_child(card_panel)
+	return card_panel
 
 func _on_phase_changed(_phase: int) -> void:
 	_refresh_ui()
