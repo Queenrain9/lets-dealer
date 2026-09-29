@@ -137,7 +137,7 @@ func _move_pointer(p: Vector2) -> void:
 
 	match phase:
 		"deal":
-			var expected := SEAT_TARGETS[deal_index % SEAT_TARGETS.size()]
+			var expected: Vector2 = SEAT_TARGETS[deal_index % SEAT_TARGETS.size()]
 			if p.distance_to(expected) <= 0.16:
 				_show_visual("deal_valid")
 			else:
@@ -432,7 +432,7 @@ func _enter_career() -> void:
 
 func _resolve_special_table(end: Vector2, is_final: bool) -> void:
 	var started_from_deck := pointer_start.distance_to(DECK_CENTER) <= 0.40
-	var target := SEAT_TARGETS[1] if is_final else SEAT_TARGETS[3]
+	var target: Vector2 = SEAT_TARGETS[1] if is_final else SEAT_TARGETS[3]
 	var valid := end.distance_to(target) <= 0.22
 
 	if started_from_deck and valid:
@@ -474,8 +474,8 @@ func _show_visual(key: String) -> void:
 		push_error("Unknown wireframe screen: %s" % key)
 		return
 
-	var texture_path := WIREFRAME_DIR + String(SCREEN_FILES[key])
-	var texture := load(texture_path) as Texture2D
+	var texture_path: String = WIREFRAME_DIR + String(SCREEN_FILES[key])
+	var texture: Texture2D = load(texture_path) as Texture2D
 	if texture == null:
 		push_error("Could not load wireframe: %s" % texture_path)
 		return
@@ -485,7 +485,7 @@ func _show_visual(key: String) -> void:
 
 
 func _normalized(position: Vector2) -> Vector2:
-	var size := get_viewport_rect().size
+	var size: Vector2 = get_viewport_rect().size
 	return Vector2(
 		position.x / maxf(size.x, 1.0),
 		position.y / maxf(size.y, 1.0)
