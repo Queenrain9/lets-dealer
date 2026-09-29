@@ -34,3 +34,6 @@ jobs:
 
       - name: Run chip and pot UI smoke test
         run: godot --headless --path . --script res://tests/chip_pot_ui_smoke_test.gd
+
+      - name: Run forgiving card gesture smoke test
+        run: godot --headless --path . --script res://tests/forgiving_card_gesture_smoke_test.gd
