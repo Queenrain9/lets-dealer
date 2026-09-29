@@ -1,0 +1,788 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/dealer_vertical_slice.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="Background"]
+bg_color = Color(0.027, 0.035, 0.051, 1)
+
+[sub_resource type="StyleBoxFlat" id="TopBar"]
+bg_color = Color(0.055, 0.067, 0.094, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.23, 0.26, 0.33, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_left = 18
+corner_radius_bottom_right = 18
+
+[sub_resource type="StyleBoxFlat" id="Mission"]
+bg_color = Color(0.055, 0.09, 0.14, 1)
+border_width_left = 3
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.26, 0.55, 0.93, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_left = 16
+corner_radius_bottom_right = 16
+
+[sub_resource type="StyleBoxFlat" id="Stats"]
+bg_color = Color(0.045, 0.052, 0.072, 0.98)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+
+[sub_resource type="StyleBoxFlat" id="Table"]
+bg_color = Color(0.035, 0.23, 0.16, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.24, 0.15, 0.075, 1)
+corner_radius_top_left = 54
+corner_radius_top_right = 54
+corner_radius_bottom_left = 54
+corner_radius_bottom_right = 54
+
+[sub_resource type="StyleBoxFlat" id="Seat"]
+bg_color = Color(0.13, 0.16, 0.21, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.31, 0.35, 0.42, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_left = 18
+corner_radius_bottom_right = 18
+
+[sub_resource type="StyleBoxFlat" id="GoldButton"]
+bg_color = Color(0.62, 0.39, 0.08, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.76, 0.27, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+
+[sub_resource type="StyleBoxFlat" id="DarkButton"]
+bg_color = Color(0.13, 0.19, 0.29, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.31, 0.49, 0.77, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_left = 16
+corner_radius_bottom_right = 16
+
+[sub_resource type="StyleBoxFlat" id="Card"]
+bg_color = Color(0.95, 0.93, 0.86, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.82, 0.66, 0.34, 1)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_left = 9
+corner_radius_bottom_right = 9
+
+[sub_resource type="StyleBoxFlat" id="DealerDock"]
+bg_color = Color(0.045, 0.052, 0.072, 1)
+border_width_top = 1
+border_color = Color(0.22, 0.25, 0.31, 1)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_left = 20
+corner_radius_bottom_right = 20
+
+[sub_resource type="StyleBoxFlat" id="Result"]
+bg_color = Color(0.055, 0.067, 0.094, 0.99)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.72, 0.18, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_left = 24
+corner_radius_bottom_right = 24
+
+[node name="DealerVerticalSlice" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("Background")
+mouse_filter = 2
+
+[node name="TopBar" type="Panel" parent="."]
+offset_left = 20.0
+offset_top = 18.0
+offset_right = 700.0
+offset_bottom = 104.0
+theme_override_styles/panel = SubResource("TopBar")
+
+[node name="LevelLabel" type="Label" parent="TopBar"]
+offset_left = 22.0
+offset_top = 20.0
+offset_right = 250.0
+offset_bottom = 48.0
+theme_override_font_sizes/font_size = 18
+text = "LV.12  신뢰받는 딜러"
+
+[node name="ExpLabel" type="Label" parent="TopBar"]
+offset_left = 22.0
+offset_top = 50.0
+offset_right = 250.0
+offset_bottom = 72.0
+theme_override_colors/font_color = Color(0.36, 0.82, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = "EXP 420 / 1,000"
+
+[node name="CashLabel" type="Label" parent="TopBar"]
+offset_left = 390.0
+offset_top = 20.0
+offset_right = 505.0
+offset_bottom = 52.0
+theme_override_colors/font_color = Color(1, 0.83, 0.34, 1)
+theme_override_font_sizes/font_size = 18
+text = "12,480"
+horizontal_alignment = 1
+
+[node name="CrownLabel" type="Label" parent="TopBar"]
+offset_left = 520.0
+offset_top = 20.0
+offset_right = 635.0
+offset_bottom = 52.0
+theme_override_colors/font_color = Color(1, 0.76, 0.22, 1)
+theme_override_font_sizes/font_size = 18
+text = "3,290"
+horizontal_alignment = 1
+
+[node name="BuildLabel" type="Label" parent="TopBar"]
+offset_left = 390.0
+offset_top = 54.0
+offset_right = 635.0
+offset_bottom = 74.0
+theme_override_colors/font_color = Color(0.52, 0.55, 0.62, 1)
+theme_override_font_sizes/font_size = 11
+text = "BUILD · vertical-slice-003"
+horizontal_alignment = 1
+
+[node name="MissionPanel" type="Panel" parent="."]
+offset_left = 20.0
+offset_top = 114.0
+offset_right = 700.0
+offset_bottom = 204.0
+theme_override_styles/panel = SubResource("Mission")
+
+[node name="MissionLabel" type="Label" parent="MissionPanel"]
+offset_left = 22.0
+offset_top = 14.0
+offset_right = 180.0
+offset_bottom = 38.0
+theme_override_colors/font_color = Color(0.53, 0.75, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "현재 미션"
+
+[node name="MissionValueLabel" type="Label" parent="MissionPanel"]
+offset_left = 22.0
+offset_top = 40.0
+offset_right = 650.0
+offset_bottom = 72.0
+theme_override_font_sizes/font_size = 20
+text = "첫 핸드를 시작하세요"
+
+[node name="StatsBar" type="Panel" parent="."]
+offset_left = 20.0
+offset_top = 214.0
+offset_right = 700.0
+offset_bottom = 272.0
+theme_override_styles/panel = SubResource("Stats")
+
+[node name="AccuracyLabel" type="Label" parent="StatsBar"]
+offset_left = 20.0
+offset_top = 15.0
+offset_right = 225.0
+offset_bottom = 43.0
+theme_override_colors/font_color = Color(0.4, 0.9, 0.66, 1)
+theme_override_font_sizes/font_size = 17
+text = "정확도 100%"
+horizontal_alignment = 1
+
+[node name="ComboLabel" type="Label" parent="StatsBar"]
+offset_left = 235.0
+offset_top = 15.0
+offset_right = 445.0
+offset_bottom = 43.0
+theme_override_colors/font_color = Color(1, 0.76, 0.25, 1)
+theme_override_font_sizes/font_size = 17
+text = "콤보 x0"
+horizontal_alignment = 1
+
+[node name="TimerLabel" type="Label" parent="StatsBar"]
+offset_left = 455.0
+offset_top = 11.0
+offset_right = 655.0
+offset_bottom = 47.0
+theme_override_font_sizes/font_size = 22
+text = "00:45"
+horizontal_alignment = 1
+
+[node name="Table" type="Panel" parent="."]
+offset_left = 24.0
+offset_top = 286.0
+offset_right = 696.0
+offset_bottom = 972.0
+theme_override_styles/panel = SubResource("Table")
+
+[node name="Seat0" type="PanelContainer" parent="Table"]
+offset_left = 12.0
+offset_top = 288.0
+offset_right = 174.0
+offset_bottom = 420.0
+theme_override_styles/panel = SubResource("Seat")
+
+[node name="Content" type="VBoxContainer" parent="Table/Seat0"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Name" type="Label" parent="Table/Seat0/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "지민"
+horizontal_alignment = 1
+
+[node name="Stack" type="Label" parent="Table/Seat0/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+text = "Stack 12,500"
+horizontal_alignment = 1
+
+[node name="State" type="Label" parent="Table/Seat0/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.68, 0.76, 1)
+theme_override_font_sizes/font_size = 11
+text = "WAIT"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="Table/Seat0/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CardA" type="Label" parent="Table/Seat0/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CardB" type="Label" parent="Table/Seat0/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Seat1" type="PanelContainer" parent="Table"]
+offset_left = 82.0
+offset_top = 24.0
+offset_right = 244.0
+offset_bottom = 156.0
+theme_override_styles/panel = SubResource("Seat")
+
+[node name="Content" type="VBoxContainer" parent="Table/Seat1"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Name" type="Label" parent="Table/Seat1/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "맥스"
+horizontal_alignment = 1
+
+[node name="Stack" type="Label" parent="Table/Seat1/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+text = "Stack 8,900"
+horizontal_alignment = 1
+
+[node name="State" type="Label" parent="Table/Seat1/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.68, 0.76, 1)
+theme_override_font_sizes/font_size = 11
+text = "WAIT"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="Table/Seat1/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CardA" type="Label" parent="Table/Seat1/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CardB" type="Label" parent="Table/Seat1/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Seat2" type="PanelContainer" parent="Table"]
+offset_left = 255.0
+offset_top = 12.0
+offset_right = 417.0
+offset_bottom = 144.0
+theme_override_styles/panel = SubResource("Seat")
+
+[node name="Content" type="VBoxContainer" parent="Table/Seat2"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Name" type="Label" parent="Table/Seat2/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "소연"
+horizontal_alignment = 1
+
+[node name="Stack" type="Label" parent="Table/Seat2/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+text = "Stack 4,300"
+horizontal_alignment = 1
+
+[node name="State" type="Label" parent="Table/Seat2/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.68, 0.76, 1)
+theme_override_font_sizes/font_size = 11
+text = "WAIT"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="Table/Seat2/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CardA" type="Label" parent="Table/Seat2/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CardB" type="Label" parent="Table/Seat2/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Seat3" type="PanelContainer" parent="Table"]
+offset_left = 428.0
+offset_top = 24.0
+offset_right = 590.0
+offset_bottom = 156.0
+theme_override_styles/panel = SubResource("Seat")
+
+[node name="Content" type="VBoxContainer" parent="Table/Seat3"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Name" type="Label" parent="Table/Seat3/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "토니"
+horizontal_alignment = 1
+
+[node name="Stack" type="Label" parent="Table/Seat3/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+text = "Stack 9,600"
+horizontal_alignment = 1
+
+[node name="State" type="Label" parent="Table/Seat3/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.68, 0.76, 1)
+theme_override_font_sizes/font_size = 11
+text = "WAIT"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="Table/Seat3/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CardA" type="Label" parent="Table/Seat3/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CardB" type="Label" parent="Table/Seat3/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Seat4" type="PanelContainer" parent="Table"]
+offset_left = 498.0
+offset_top = 288.0
+offset_right = 660.0
+offset_bottom = 420.0
+theme_override_styles/panel = SubResource("Seat")
+
+[node name="Content" type="VBoxContainer" parent="Table/Seat4"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Name" type="Label" parent="Table/Seat4/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "김사장"
+horizontal_alignment = 1
+
+[node name="Stack" type="Label" parent="Table/Seat4/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+text = "Stack 6,800"
+horizontal_alignment = 1
+
+[node name="State" type="Label" parent="Table/Seat4/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.68, 0.76, 1)
+theme_override_font_sizes/font_size = 11
+text = "WAIT"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="Table/Seat4/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CardA" type="Label" parent="Table/Seat4/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CardB" type="Label" parent="Table/Seat4/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Seat5" type="PanelContainer" parent="Table"]
+offset_left = 255.0
+offset_top = 516.0
+offset_right = 417.0
+offset_bottom = 648.0
+theme_override_styles/panel = SubResource("Seat")
+
+[node name="Content" type="VBoxContainer" parent="Table/Seat5"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Name" type="Label" parent="Table/Seat5/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "찰리"
+horizontal_alignment = 1
+
+[node name="Stack" type="Label" parent="Table/Seat5/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+text = "Stack 3,200"
+horizontal_alignment = 1
+
+[node name="State" type="Label" parent="Table/Seat5/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.68, 0.76, 1)
+theme_override_font_sizes/font_size = 11
+text = "WAIT"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="Table/Seat5/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CardA" type="Label" parent="Table/Seat5/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CardB" type="Label" parent="Table/Seat5/Content/Cards"]
+custom_minimum_size = Vector2(48, 38)
+layout_mode = 2
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BoardRow" type="HBoxContainer" parent="Table"]
+offset_left = 136.0
+offset_top = 202.0
+offset_right = 536.0
+offset_bottom = 298.0
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Card0" type="PanelContainer" parent="Table/BoardRow"]
+visible = false
+custom_minimum_size = Vector2(72, 96)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Card")
+
+[node name="Label" type="Label" parent="Table/BoardRow/Card0"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.08, 0.09, 0.11, 1)
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Card1" type="PanelContainer" parent="Table/BoardRow"]
+visible = false
+custom_minimum_size = Vector2(72, 96)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Card")
+
+[node name="Label" type="Label" parent="Table/BoardRow/Card1"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.08, 0.09, 0.11, 1)
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Card2" type="PanelContainer" parent="Table/BoardRow"]
+visible = false
+custom_minimum_size = Vector2(72, 96)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Card")
+
+[node name="Label" type="Label" parent="Table/BoardRow/Card2"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.08, 0.09, 0.11, 1)
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Card3" type="PanelContainer" parent="Table/BoardRow"]
+visible = false
+custom_minimum_size = Vector2(72, 96)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Card")
+
+[node name="Label" type="Label" parent="Table/BoardRow/Card3"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.08, 0.09, 0.11, 1)
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Card4" type="PanelContainer" parent="Table/BoardRow"]
+visible = false
+custom_minimum_size = Vector2(72, 96)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Card")
+
+[node name="Label" type="Label" parent="Table/BoardRow/Card4"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.08, 0.09, 0.11, 1)
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PotLabel" type="Label" parent="Table"]
+offset_left = 236.0
+offset_top = 330.0
+offset_right = 436.0
+offset_bottom = 392.0
+theme_override_colors/font_color = Color(1, 0.83, 0.34, 1)
+theme_override_font_sizes/font_size = 28
+text = "POT 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Chip0" type="Button" parent="Table"]
+visible = false
+offset_left = 162.0
+offset_top = 340.0
+offset_right = 254.0
+offset_bottom = 392.0
+theme_override_styles/normal = SubResource("GoldButton")
+text = "1,200"
+
+[node name="Chip1" type="Button" parent="Table"]
+visible = false
+offset_left = 154.0
+offset_top = 158.0
+offset_right = 246.0
+offset_bottom = 210.0
+theme_override_styles/normal = SubResource("GoldButton")
+text = "1,000"
+
+[node name="Chip2" type="Button" parent="Table"]
+visible = false
+offset_left = 290.0
+offset_top = 148.0
+offset_right = 382.0
+offset_bottom = 200.0
+theme_override_styles/normal = SubResource("GoldButton")
+text = "1,600"
+
+[node name="Chip3" type="Button" parent="Table"]
+visible = false
+offset_left = 426.0
+offset_top = 158.0
+offset_right = 518.0
+offset_bottom = 210.0
+theme_override_styles/normal = SubResource("GoldButton")
+text = "0"
+
+[node name="Chip4" type="Button" parent="Table"]
+visible = false
+offset_left = 418.0
+offset_top = 340.0
+offset_right = 510.0
+offset_bottom = 392.0
+theme_override_styles/normal = SubResource("GoldButton")
+text = "1,800"
+
+[node name="Chip5" type="Button" parent="Table"]
+visible = false
+offset_left = 290.0
+offset_top = 458.0
+offset_right = 382.0
+offset_bottom = 510.0
+theme_override_styles/normal = SubResource("GoldButton")
+text = "1,800"
+
+[node name="TaskLog" type="Label" parent="."]
+offset_left = 28.0
+offset_top = 982.0
+offset_right = 250.0
+offset_bottom = 1142.0
+theme_override_colors/font_color = Color(0.74, 0.78, 0.84, 1)
+theme_override_font_sizes/font_size = 13
+text = "□ 카드 딜
+□ 칩 수거
+□ 보드 오픈
+□ 승자 지급"
+
+[node name="DealerDock" type="Panel" parent="."]
+offset_left = 260.0
+offset_top = 988.0
+offset_right = 700.0
+offset_bottom = 1142.0
+theme_override_styles/panel = SubResource("DealerDock")
+
+[node name="DockTitle" type="Label" parent="DealerDock"]
+offset_left = 18.0
+offset_top = 12.0
+offset_right = 422.0
+offset_bottom = 34.0
+theme_override_colors/font_color = Color(0.55, 0.59, 0.67, 1)
+theme_override_font_sizes/font_size = 12
+text = "DEALER ACTION"
+horizontal_alignment = 1
+
+[node name="StartButton" type="Button" parent="DealerDock"]
+offset_left = 50.0
+offset_top = 44.0
+offset_right = 390.0
+offset_bottom = 126.0
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("DarkButton")
+text = "START HAND"
+
+[node name="DealButton" type="Button" parent="DealerDock"]
+visible = false
+offset_left = 50.0
+offset_top = 44.0
+offset_right = 390.0
+offset_bottom = 126.0
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("GoldButton")
+text = "DEAL CARD  0 / 12"
+
+[node name="ActionButton" type="Button" parent="DealerDock"]
+visible = false
+offset_left = 50.0
+offset_top = 44.0
+offset_right = 390.0
+offset_bottom = 126.0
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("GoldButton")
+text = "OPEN FLOP"
+
+[node name="ResultPanel" type="PanelContainer" parent="."]
+visible = false
+z_index = 50
+offset_left = 100.0
+offset_top = 432.0
+offset_right = 620.0
+offset_bottom = 718.0
+theme_override_styles/panel = SubResource("Result")
+
+[node name="Content" type="VBoxContainer" parent="ResultPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="ResultTitle" type="Label" parent="ResultPanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.74, 0.18, 1)
+theme_override_font_sizes/font_size = 32
+text = "PERFECT x0"
+horizontal_alignment = 1
+
+[node name="ResultDetail" type="Label" parent="ResultPanel/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "정확도 100% · TIP +200 · EXP +2,300"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="NextHandButton" type="Button" parent="ResultPanel/Content"]
+custom_minimum_size = Vector2(0, 68)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("GoldButton")
+text = "NEXT HAND"
