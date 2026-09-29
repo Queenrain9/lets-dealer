@@ -1181,7 +1181,7 @@ func _begin_payout_targeting(duty: DealerTask) -> void:
 func _cancel_payout_targeting() -> void:
 	payout_targeting = false
 	active_payout_duty = null
-	context_label.text = "TABLE LIVE"
+	context_label.text = ""
 	_reset_seat_styles()
 
 
@@ -1262,7 +1262,8 @@ func _after_duty_resolved(duty: DealerTask) -> void:
 		"chip_change":
 			if duty.source_seat >= 0 and duty.source_seat < seat_state_labels.size():
 				seat_state_labels[duty.source_seat].text = "ACTIVE"
-			context_label.text = "TABLE LIVE"
+				_say_npc(duty.source_seat, "request_done", true)
+			context_label.text = ""
 		"payout":
 			_after_payout(duty)
 
