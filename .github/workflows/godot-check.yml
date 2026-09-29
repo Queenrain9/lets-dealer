@@ -28,3 +28,6 @@ jobs:
 
       - name: Run input baseline smoke test
         run: godot --headless --path . --script res://tests/input_baseline_smoke_test.gd
+
+      - name: Run dealer vertical slice smoke test
+        run: godot --headless --path . --script res://tests/vertical_slice_smoke_test.gd
