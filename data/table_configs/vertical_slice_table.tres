@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TableConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/config/table_config.gd" id="1_table_config"]
+
+[resource]
+script = ExtResource("1_table_config")
+id = &"river_pub_slice"
+display_name = "River Pub"
+seat_count = 6
+starting_stack = 15000
+small_blind = 100
+big_blind = 200
+cards_per_player = 2
