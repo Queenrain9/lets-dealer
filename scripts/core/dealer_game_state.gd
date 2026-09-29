@@ -55,7 +55,7 @@ func try_deal_card_to_seat(seat_index: int) -> bool:
 		push_error("Prototype deck ran out of cards.")
 		return false
 
-	var card_id := table.hand.deck.pop_back()
+	var card_id: String = String(table.hand.deck.pop_back())
 	var seat := table.get_seat(seat_index)
 	if seat == null:
 		return false
