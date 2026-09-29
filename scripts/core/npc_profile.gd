@@ -10,6 +10,7 @@ var request_bias: float = 1.0
 var tip_multiplier: float = 1.0
 var warning_line: String = "딜러?"
 var miss_line: String = "요청한 거 아직인데요."
+var dialogue: Dictionary = {}
 
 
 func _init(data: Dictionary = {}) -> void:
@@ -22,3 +23,15 @@ func _init(data: Dictionary = {}) -> void:
 	tip_multiplier = float(data.get("tip_multiplier", 1.0))
 	warning_line = String(data.get("warning_line", "딜러?"))
 	miss_line = String(data.get("miss_line", "요청한 거 아직인데요."))
+	var raw_dialogue: Variant = data.get("dialogue", {})
+	if raw_dialogue is Dictionary:
+		dialogue = (raw_dialogue as Dictionary).duplicate(true)
+
+
+func lines_for(category: String) -> Array[String]:
+	var result: Array[String] = []
+	var raw: Variant = dialogue.get(category, [])
+	if raw is Array:
+		for value: Variant in raw:
+			result.append(String(value))
+	return result
