@@ -1,8 +1,5 @@
-extends PanelContainer
+extends Button
 class_name SwipeChipStack
-
-const PREVIEW_PULL_RATIO: float = 0.16
-const MAX_PREVIEW_PULL: float = 64.0
 
 @export var seat_index: int = 0
 
@@ -12,29 +9,27 @@ var _home_position: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	_home_position = position
+	amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	focus_mode = Control.FOCUS_NONE
+	disabled = true
 	visible = false
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func arm(amount: int) -> void:
 	amount_label.text = str(amount)
 	visible = amount > 0
-	mouse_filter = (
-		Control.MOUSE_FILTER_STOP if visible else Control.MOUSE_FILTER_IGNORE
-	)
+	disabled = not visible
 	reset_preview()
 
 func disarm() -> void:
+	disabled = true
 	visible = false
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reset_preview()
 
 func begin_preview() -> void:
 	scale = Vector2(1.04, 1.04)
 
 func update_preview(gesture_delta: Vector2) -> void:
-	var preview_delta: Vector2 = (
-		gesture_delta.limit_length(MAX_PREVIEW_PULL) * PREVIEW_PULL_RATIO
-	)
+	var preview_delta: Vector2 = gesture_delta.limit_length(64.0) * 0.16
 	position = _home_position + preview_delta
 
 func reset_preview() -> void:
