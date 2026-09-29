@@ -2,7 +2,7 @@ extends RefCounted
 class_name LiveShiftScenario
 
 
-static func build() -> Array[Dictionary]:
+static func build(seed: int = 1, roster: Array[NPCProfile] = []) -> Array[Dictionary]:
 	var hands: Array[Dictionary] = []
 
 	hands.append({
@@ -169,4 +169,107 @@ static func build() -> Array[Dictionary]:
 		},
 	})
 
+	if roster.is_empty():
+		roster = NPCRoster.build(seed)
+
+	_randomize_shift(hands, seed, roster)
 	return hands
+
+
+static func _randomize_shift(hands: Array[Dictionary], seed: int, roster: Array[NPCProfile]) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+
+	for i in range(hands.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var temp: Dictionary = hands[i]
+		hands[i] = hands[j]
+		hands[j] = temp
+
+	for hand_index in range(hands.size()):
+		var hand: Dictionary = hands[hand_index]
+		hand["label"] = "HAND %d / %d" % [hand_index + 1, hands.size()]
+		for street in ["preflop", "flop", "turn", "river"]:
+			if hand.has(street):
+				_randomize_round(hand[street] as Dictionary, rng, roster)
+		_rebuild_showdown_text(hand, roster)
+
+
+static func _randomize_round(round_data: Dictionary, rng: RandomNumberGenerator, roster: Array[NPCProfile]) -> void:
+	var raw_events: Variant = round_data.get("events", [])
+	if raw_events is Array:
+		var events: Array = raw_events as Array
+		var previous_base: float = 0.0
+		var current_time: float = 0.0
+		for raw: Variant in events:
+			if not raw is Dictionary:
+				continue
+			var event: Dictionary = raw as Dictionary
+			var base_time: float = float(event.get("t", previous_base + 0.4))
+			var delta: float = maxf(base_time - previous_base, 0.18)
+			var seat: int = int(event.get("seat", -1))
+			var speed: float = 1.0
+			if seat >= 0 and seat < roster.size():
+				speed = roster[seat].action_speed
+			current_time += maxf(0.18, delta * speed * rng.randf_range(0.88, 1.12))
+			event["t"] = current_time
+			previous_base = base_time
+
+	var raw_request: Variant = round_data.get("request", {})
+	if raw_request is Dictionary and not (raw_request as Dictionary).is_empty():
+		var request: Dictionary = raw_request as Dictionary
+		var seat: int = _pick_request_seat(rng, roster)
+		var profile: NPCProfile = roster[seat]
+		var request_types: Array[String] = [
+			"5,000 칩 교환 요청",
+			"1,000칩 5개 요청",
+			"500칩 10개 요청",
+			"큰 칩을 잔칩으로 교환 요청",
+		]
+		request["seat"] = seat
+		request["text"] = "%s · %s" % [
+			profile.display_name,
+			request_types[rng.randi_range(0, request_types.size() - 1)],
+		]
+		request["patience"] = maxf(2.8, 5.0 * profile.patience * rng.randf_range(0.90, 1.10))
+		request["tip"] = int(round(150.0 * profile.tip_multiplier))
+		request["t"] = maxf(0.45, float(request.get("t", 0.8)) * profile.action_speed * rng.randf_range(0.85, 1.10))
+
+
+static func _pick_request_seat(rng: RandomNumberGenerator, roster: Array[NPCProfile]) -> int:
+	if roster.is_empty():
+		return 0
+	var total: float = 0.0
+	for profile in roster:
+		total += maxf(profile.request_bias, 0.05)
+
+	var roll: float = rng.randf() * total
+	var cursor: float = 0.0
+	for i in range(roster.size()):
+		cursor += maxf(roster[i].request_bias, 0.05)
+		if roll <= cursor:
+			return i
+	return roster.size() - 1
+
+
+static func _rebuild_showdown_text(hand: Dictionary, roster: Array[NPCProfile]) -> void:
+	if not hand.has("showdown"):
+		return
+	var showdown: Dictionary = hand["showdown"] as Dictionary
+	var cards: Dictionary = {}
+	match String(hand.get("id", "")):
+		"hand_01":
+			cards = {2: "A♠ A♥", 3: "9♠ 9♥", 5: "K♣ J♣"}
+		"hand_02":
+			cards = {1: "Q♠ J♠", 5: "K♦ 10♦"}
+		"hand_03":
+			cards = {2: "A♣ Q♣", 5: "9♦ 9♥"}
+
+	var lines: Array[String] = []
+	for raw_seat: Variant in cards.keys():
+		var seat: int = int(raw_seat)
+		var name: String = "SEAT %d" % (seat + 1)
+		if seat >= 0 and seat < roster.size():
+			name = roster[seat].display_name
+		lines.append("%s  %s" % [name, String(cards[raw_seat])])
+	showdown["text"] = "\n".join(lines)
