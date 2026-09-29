@@ -927,6 +927,7 @@ func _enqueue_payout_from_data(raw: Variant, payout_index: int) -> void:
 			"pot_name": pot_name,
 			"amount": int(data.get("amount", 0)),
 			"payout_index": payout_index,
+			"eligible": data.get("eligible", []),
 		},
 	}))
 	headline_label.text = "%s POT  %s" % [pot_name, _format_amount(int(data.get("amount", 0)))]
@@ -1231,34 +1232,17 @@ func _resolve_duty_without_reward(duty: DealerTask) -> void:
 
 func _apply_payout_eligibility(duty: DealerTask) -> void:
 	_reset_seat_styles()
-	var hand: Dictionary = hands[hand_index]
-	var showdown: Dictionary = hand.get("showdown", {}) as Dictionary
-	var payouts: Array = showdown.get("payouts", []) as Array
-	var payout_index: int = int(duty.state.get("payout_index", 0))
-	var eligible: Array[int] = []
+	var raw_eligible: Variant = duty.state.get("eligible", [])
+	if not raw_eligible is Array:
+		return
 
-	if payout_index == 0:
-		for raw: Variant in payouts:
-			if raw is Dictionary:
-				var seat: int = int((raw as Dictionary).get("seat", -1))
-				if seat >= 0 and not eligible.has(seat):
-					eligible.append(seat)
-		for i in [0, 1, 2, 3, 4, 5]:
-			if not seat_state_labels[i].text.begins_with("FOLD"):
-				if not eligible.has(i):
-					eligible.append(i)
-	else:
-		for raw: Variant in payouts:
-			if raw is Dictionary:
-				var seat: int = int((raw as Dictionary).get("seat", -1))
-				if seat >= 0 and not eligible.has(seat):
-					eligible.append(seat)
-
-	for seat_index in eligible:
-		seat_panels[seat_index].add_theme_stylebox_override(
-			"panel",
-			_style(Color("1c2c39"), INFO, 3, 14)
-		)
+	for value: Variant in raw_eligible:
+		var seat_index: int = int(value)
+		if seat_index >= 0 and seat_index < seat_panels.size():
+			seat_panels[seat_index].add_theme_stylebox_override(
+				"panel",
+				_style(Color("1c2c39"), INFO, 3, 14)
+			)
 
 
 func _refresh_request_panel_from_duties() -> void:
