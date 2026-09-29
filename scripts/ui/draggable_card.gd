@@ -18,7 +18,10 @@ var _gesture_start: Vector2 = Vector2.ZERO
 var _home_position: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
-	call_deferred("_capture_home_position")
+	# Capture the authored scene position before the parent scene can call disarm().
+	# Deferring this used to let disarm() reset the card to (0, 0), which then
+	# became the accidental "home" position.
+	_home_position = position
 	set_process_input(false)
 
 func arm(card_id: String) -> void:
@@ -54,8 +57,6 @@ func fly_to(global_target: Vector2, duration: float = 0.16) -> void:
 	tween.tween_property(self, "global_position", global_target, duration)
 	await tween.finished
 
-func _capture_home_position() -> void:
-	_home_position = position
 
 func _gui_input(event: InputEvent) -> void:
 	if not _input_enabled or _swiping:
