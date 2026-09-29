@@ -189,10 +189,37 @@ static func _randomize_shift(hands: Array[Dictionary], seed: int, roster: Array[
 	for hand_index in range(hands.size()):
 		var hand: Dictionary = hands[hand_index]
 		hand["label"] = "HAND %d / %d" % [hand_index + 1, hands.size()]
+		_relocate_request(hand, rng)
 		for street in ["preflop", "flop", "turn", "river"]:
 			if hand.has(street):
 				_randomize_round(hand[street] as Dictionary, rng, roster)
 		_rebuild_showdown_text(hand, roster)
+
+
+
+static func _relocate_request(hand: Dictionary, rng: RandomNumberGenerator) -> void:
+	var source_street: String = ""
+	var request_data: Dictionary = {}
+	for street in ["flop", "turn", "river"]:
+		if not hand.has(street):
+			continue
+		var round_data: Dictionary = hand[street] as Dictionary
+		var raw_request: Variant = round_data.get("request", {})
+		if raw_request is Dictionary and not (raw_request as Dictionary).is_empty():
+			source_street = street
+			request_data = (raw_request as Dictionary).duplicate(true)
+			round_data.erase("request")
+			break
+
+	if request_data.is_empty():
+		return
+
+	var candidates: Array[String] = ["flop", "turn", "river"]
+	var target_street: String = candidates[rng.randi_range(0, candidates.size() - 1)]
+	if not hand.has(target_street):
+		target_street = source_street
+	var target_round: Dictionary = hand[target_street] as Dictionary
+	target_round["request"] = request_data
 
 
 static func _randomize_round(round_data: Dictionary, rng: RandomNumberGenerator, roster: Array[NPCProfile]) -> void:
