@@ -46,6 +46,8 @@ const ACTION_LABELS: Dictionary = {
 const STREET_ORDER: Array[String] = ["preflop", "flop", "turn", "river"]
 
 var hands: Array[Dictionary] = []
+var roster: Array[NPCProfile] = []
+var shift_seed: int = 1
 var hand_index: int = -1
 var street_index: int = 0
 var shift_elapsed: float = 0.0
@@ -95,6 +97,7 @@ var showdown_label: Label
 
 var seat_panels: Array[Panel] = []
 var seat_name_labels: Array[Label] = []
+var seat_trait_labels: Array[Label] = []
 var seat_stack_labels: Array[Label] = []
 var seat_state_labels: Array[Label] = []
 var bet_panels: Array[Panel] = []
@@ -364,8 +367,8 @@ func _create_seat(index: int) -> void:
 	seat_panels.append(seat)
 
 	var name_label := Label.new()
-	name_label.position = Vector2(8, 7)
-	name_label.size = Vector2(138, 23)
+	name_label.position = Vector2(8, 5)
+	name_label.size = Vector2(138, 22)
 	name_label.text = PLAYER_NAMES[index]
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.add_theme_font_size_override("font_size", 15)
@@ -374,20 +377,31 @@ func _create_seat(index: int) -> void:
 	seat.add_child(name_label)
 	seat_name_labels.append(name_label)
 
+	var trait_label := Label.new()
+	trait_label.position = Vector2(8, 27)
+	trait_label.size = Vector2(138, 18)
+	trait_label.text = "REGULAR"
+	trait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	trait_label.add_theme_font_size_override("font_size", 10)
+	trait_label.add_theme_color_override("font_color", INFO)
+	trait_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	seat.add_child(trait_label)
+	seat_trait_labels.append(trait_label)
+
 	var stack_label := Label.new()
-	stack_label.position = Vector2(8, 30)
-	stack_label.size = Vector2(138, 22)
+	stack_label.position = Vector2(8, 45)
+	stack_label.size = Vector2(138, 20)
 	stack_label.text = _format_amount(PLAYER_STACKS[index])
 	stack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stack_label.add_theme_font_size_override("font_size", 13)
+	stack_label.add_theme_font_size_override("font_size", 12)
 	stack_label.add_theme_color_override("font_color", ACCENT)
 	stack_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seat.add_child(stack_label)
 	seat_stack_labels.append(stack_label)
 
 	var state_label := Label.new()
-	state_label.position = Vector2(8, 56)
-	state_label.size = Vector2(138, 38)
+	state_label.position = Vector2(8, 66)
+	state_label.size = Vector2(138, 32)
 	state_label.text = "WAIT"
 	state_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	state_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -678,7 +692,10 @@ func _show_home() -> void:
 
 
 func _start_shift() -> void:
-	hands = LiveShiftScenario.build()
+	shift_seed = int((Time.get_ticks_msec() + cash * 31) % 2147483647)
+	roster = NPCRoster.build(shift_seed)
+	hands = LiveShiftScenario.build(shift_seed, roster)
+	_apply_roster_to_seats()
 	hand_index = 0
 	shift_elapsed = 0.0
 	session_active = true
@@ -812,7 +829,7 @@ func _fire_scheduled_event(event: Dictionary) -> void:
 				_flash_panel(seat_panels[seat], INFO)
 				bet_panels[seat].visible = bet > 0
 				bet_labels[seat].text = _format_amount(bet)
-				headline_label.text = "%s · %s" % [PLAYER_NAMES[seat], state]
+				headline_label.text = "%s · %s" % [_seat_name(seat), state]
 		"request":
 			_spawn_service_request(event)
 		"betting_closed":
@@ -835,7 +852,7 @@ func _spawn_service_request(event: Dictionary) -> void:
 		"phase": "SERVICE",
 		"expected_action": "chip_change",
 		"success_text": "CHIP CHANGE",
-		"base_tip": 150,
+		"base_tip": int(event.get("tip", 150)),
 		"source_seat": seat,
 		"blocking": false,
 		"patience_limit": patience,
@@ -947,10 +964,11 @@ func _age_pending_duties(delta: float) -> void:
 		if not duty.warned and duty.age >= duty.patience_limit * 0.65:
 			duty.warned = true
 			if duty.expected_action == "chip_change":
-				var seat_name: String = "손님"
-				if duty.source_seat >= 0 and duty.source_seat < PLAYER_NAMES.size():
-					seat_name = PLAYER_NAMES[duty.source_seat]
-				_show_feedback("%s: 딜러?" % seat_name, ACCENT)
+				var seat_name: String = _seat_name(duty.source_seat)
+				var warning: String = "딜러?"
+				if duty.source_seat >= 0 and duty.source_seat < roster.size():
+					warning = roster[duty.source_seat].warning_line
+				_show_feedback("%s: %s" % [seat_name, warning], ACCENT)
 			elif duty.blocking:
 				_show_feedback("TABLE WAITING...", ACCENT)
 
@@ -970,9 +988,15 @@ func _age_pending_duties(delta: float) -> void:
 			pending_duties.remove_at(i)
 			mistakes += 1
 			flow_combo = 0
-			tips = maxi(tips - 80, 0)
-			_append_history("× 요청 놓침 · TIP -80", BAD)
-			_show_feedback("REQUEST MISSED", BAD)
+			var penalty: int = 80
+			var miss_line: String = "요청을 놓쳤습니다."
+			if duty.source_seat >= 0 and duty.source_seat < roster.size():
+				var profile: NPCProfile = roster[duty.source_seat]
+				penalty = int(round(80.0 * profile.tip_multiplier))
+				miss_line = profile.miss_line
+			tips = maxi(tips - penalty, 0)
+			_append_history("× 요청 놓침 · TIP -%d" % penalty, BAD)
+			_show_feedback("%s: %s" % [_seat_name(duty.source_seat), miss_line], BAD)
 			_refresh_request_panel_from_duties()
 			_refresh_hud()
 			_refresh_pressure()
@@ -1388,6 +1412,33 @@ func _reset_seat_styles() -> void:
 	pot_panel.scale = Vector2.ONE
 	pot_panel.add_theme_stylebox_override("panel", _style(Color("1d2630"), ACCENT, 2, 24))
 
+
+
+func _apply_roster_to_seats() -> void:
+	for i in range(seat_name_labels.size()):
+		if i < roster.size():
+			seat_name_labels[i].text = roster[i].display_name
+			seat_trait_labels[i].text = roster[i].trait_label
+			if roster[i].patience < 0.75:
+				seat_trait_labels[i].add_theme_color_override("font_color", BAD)
+			elif roster[i].request_bias > 1.25:
+				seat_trait_labels[i].add_theme_color_override("font_color", PURPLE)
+			elif roster[i].action_speed > 1.20:
+				seat_trait_labels[i].add_theme_color_override("font_color", MUTED)
+			else:
+				seat_trait_labels[i].add_theme_color_override("font_color", INFO)
+		else:
+			seat_name_labels[i].text = PLAYER_NAMES[i]
+			seat_trait_labels[i].text = "REGULAR"
+			seat_trait_labels[i].add_theme_color_override("font_color", INFO)
+
+
+func _seat_name(index: int) -> String:
+	if index >= 0 and index < roster.size():
+		return roster[index].display_name
+	if index >= 0 and index < PLAYER_NAMES.size():
+		return PLAYER_NAMES[index]
+	return "손님"
 
 func _format_amount(value: int) -> String:
 	var raw: String = str(value)
