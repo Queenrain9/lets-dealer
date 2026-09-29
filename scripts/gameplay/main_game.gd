@@ -1,6 +1,6 @@
 extends Control
 
-const BUILD_ID: String = "wireframe-reconcile-stage7-v0.8"
+const BUILD_ID: String = "real-table-state-stage8-v0.9"
 
 const BG: Color = Color("0d1218")
 const PANEL: Color = Color("171e27")
@@ -52,6 +52,8 @@ const SPEECH_POSITIONS: Array[Vector2] = [
 ]
 var hands: Array[Dictionary] = []
 var roster: Array[NPCProfile] = []
+var table_state := DealerTableState.new(6)
+var current_payouts: Array[Dictionary] = []
 var shift_seed: int = 1
 var hand_index: int = -1
 var street_index: int = 0
@@ -116,6 +118,7 @@ var seat_panels: Array[Panel] = []
 var seat_name_labels: Array[Label] = []
 var seat_stack_labels: Array[Label] = []
 var seat_state_labels: Array[Label] = []
+var seat_position_labels: Array[Label] = []
 var bet_panels: Array[Panel] = []
 var bet_labels: Array[Label] = []
 var board_panels: Array[Panel] = []
@@ -458,6 +461,18 @@ func _create_seat(index: int) -> void:
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seat.add_child(name_label)
 	seat_name_labels.append(name_label)
+
+	var position_label := Label.new()
+	position_label.position = Vector2(4, 4)
+	position_label.size = Vector2(32, 20)
+	position_label.text = ""
+	position_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	position_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	position_label.add_theme_font_size_override("font_size", 10)
+	position_label.add_theme_color_override("font_color", INFO)
+	position_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	seat.add_child(position_label)
+	seat_position_labels.append(position_label)
 
 	var stack_label := Label.new()
 	stack_label.position = Vector2(8, 31)
@@ -1151,6 +1166,26 @@ func _start_hand() -> void:
 	street_elapsed = 0.0
 
 	var hand: Dictionary = hands[hand_index]
+	var starting_stacks: Array[int] = []
+	var raw_stacks: Variant = hand.get("starting_stacks", PLAYER_STACKS)
+	if raw_stacks is Array:
+		for value: Variant in raw_stacks as Array:
+			starting_stacks.append(int(value))
+	if starting_stacks.size() != seat_panels.size():
+		starting_stacks.clear()
+		for value in PLAYER_STACKS:
+			starting_stacks.append(value)
+
+	var sb_amount: int = 300
+	var bb_amount: int = 600
+	var raw_blinds: Variant = hand.get("blinds", [300, 600])
+	if raw_blinds is Array and (raw_blinds as Array).size() >= 2:
+		sb_amount = int((raw_blinds as Array)[0])
+		bb_amount = int((raw_blinds as Array)[1])
+
+	table_state.begin_hand(starting_stacks, hand_index % seat_panels.size(), sb_amount, bb_amount)
+	current_payouts.clear()
+
 	phase_label.text = String(hand.get("label", "HAND"))
 	headline_label.text = "HAND START"
 	event_label.text = ""
@@ -1174,6 +1209,9 @@ func _start_hand() -> void:
 		seat_state_labels[i].text = "READY"
 		bet_panels[i].visible = false
 		seat_panels[i].add_theme_stylebox_override("panel", _style(PANEL, LINE, 2, 14))
+
+	_refresh_stack_position_ui()
+	_refresh_bet_ui()
 
 	_enqueue_duty(DealerTask.new({
 		"id": "deal",
@@ -1249,10 +1287,11 @@ func _fire_scheduled_event(event: Dictionary) -> void:
 			var state: String = String(event.get("state", ""))
 			var bet: int = int(event.get("bet", 0))
 			if seat >= 0 and seat < seat_state_labels.size():
+				table_state.apply_action(seat, state, bet)
 				seat_state_labels[seat].text = state
 				_flash_panel(seat_panels[seat], INFO)
-				bet_panels[seat].visible = bet > 0
-				bet_labels[seat].text = _format_amount(bet)
+				_refresh_stack_position_ui()
+				_refresh_bet_ui()
 				headline_label.text = "%s · %s" % [_seat_name(seat), state]
 				_try_action_dialogue(seat, state)
 		"request":
@@ -1296,11 +1335,7 @@ func _on_betting_closed(street: String) -> void:
 	var hand: Dictionary = hands[hand_index]
 	var round_data: Dictionary = hand[street] as Dictionary
 	var collect: Dictionary = round_data.get("collect", {}) as Dictionary
-	var has_bets: bool = false
-	for bet in bet_panels:
-		if bet.visible:
-			has_bets = true
-			break
+	var has_bets: bool = table_state.has_street_chips()
 
 	if not has_bets and bool(collect.get("skip_if_zero", false)):
 		headline_label.text = "%s · CHECKED THROUGH" % street.to_upper()
@@ -1321,8 +1356,6 @@ func _on_betting_closed(street: String) -> void:
 		"patience_limit": 5.5,
 		"state": {
 			"street": street,
-			"main_after": int(collect.get("main_after", 0)),
-			"side_after": int(collect.get("side_after", 0)),
 		},
 	}))
 
@@ -1352,12 +1385,12 @@ func _enqueue_showdown() -> void:
 	headline_label.text = "SHOWDOWN"
 	event_label.text = ""
 	context_label.text = ""
-	var payouts: Array = showdown.get("payouts", []) as Array
-	if payouts.is_empty():
+	current_payouts = _build_dynamic_payouts(showdown)
+	if current_payouts.is_empty():
 		_finish_hand()
 		return
 
-	_enqueue_payout_from_data(payouts[0], 0)
+	_enqueue_payout_from_data(current_payouts[0], 0)
 
 
 func _enqueue_payout_from_data(raw: Variant, payout_index: int) -> void:
@@ -1391,6 +1424,64 @@ func _enqueue_duty(duty: DealerTask) -> void:
 	_sync_wireframe_state(duty)
 	_signal_duty_affordance(duty)
 	_refresh_pressure()
+
+
+
+func _refresh_stack_position_ui() -> void:
+	for i in range(seat_panels.size()):
+		if i < table_state.stacks.size():
+			seat_stack_labels[i].text = _format_amount(table_state.stack_for(i))
+			seat_position_labels[i].text = table_state.position_for(i)
+
+
+func _refresh_bet_ui() -> void:
+	for i in range(bet_panels.size()):
+		var contribution: int = table_state.contribution_for(i)
+		bet_panels[i].visible = contribution > 0
+		if contribution > 0:
+			bet_labels[i].text = _format_amount(contribution)
+
+
+func _clear_bet_ui() -> void:
+	for panel in bet_panels:
+		panel.visible = false
+
+
+func _build_dynamic_payouts(showdown: Dictionary) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var layers: Array[Dictionary] = table_state.pot_layers()
+	var templates: Array = showdown.get("payouts", []) as Array
+	if layers.is_empty():
+		return result
+
+	for i in range(layers.size()):
+		var layer: Dictionary = layers[i]
+		var eligible: Array = layer.get("eligible", []) as Array
+		if eligible.is_empty():
+			continue
+
+		var template: Dictionary = {}
+		if not templates.is_empty():
+			var template_index: int = mini(i, templates.size() - 1)
+			var raw_template: Variant = templates[template_index]
+			if raw_template is Dictionary:
+				template = raw_template as Dictionary
+
+		var target_seat: int = int(template.get("seat", int(eligible[0])))
+		if not eligible.has(target_seat):
+			target_seat = int(eligible[0])
+
+		var pot_name: String = "MAIN" if i == 0 else ("SIDE" if i == 1 else "SIDE %d" % i)
+		result.append({
+			"pot": pot_name,
+			"amount": int(layer.get("amount", 0)),
+			"seat": target_seat,
+			"tip": int(template.get("tip", 200)),
+			"eligible": eligible.duplicate(),
+		})
+
+	return result
+
 
 
 func _age_pending_duties(delta: float) -> void:
@@ -1596,8 +1687,8 @@ func _after_duty_resolved(duty: DealerTask) -> void:
 			_schedule_betting_round("preflop")
 		"pot":
 			var street: String = String(duty.state.get("street", "preflop"))
-			var main_after: int = int(duty.state.get("main_after", 0))
-			var side_after: int = int(duty.state.get("side_after", 0))
+			var main_after: int = table_state.main_pot_amount()
+			var side_after: int = table_state.side_pot_amount()
 			main_pot_label.text = "MAIN POT  %s" % _format_amount(main_after)
 			side_pot_label.text = "SIDE POT  %s" % _format_amount(side_after)
 			side_pot_label.visible = side_after > 0
@@ -1606,6 +1697,8 @@ func _after_duty_resolved(duty: DealerTask) -> void:
 			_after_collect(street, duty.state)
 		"board":
 			var street: String = String(duty.state.get("street", "flop"))
+			table_state.begin_street(street)
+			_clear_bet_ui()
 			_open_board(street)
 			_schedule_betting_round(street)
 		"chip_change":
@@ -1635,21 +1728,22 @@ func _after_payout(duty: DealerTask) -> void:
 		main_pot_label.text = "MAIN POT  PAID"
 	else:
 		side_pot_label.text = "SIDE POT  PAID"
+	var payout_amount: int = int(duty.state.get("amount", 0))
 	if duty.target_seat >= 0:
+		table_state.payout(duty.target_seat, payout_amount)
+		_refresh_stack_position_ui()
 		_say_npc(duty.target_seat, "win", true)
 
-	var hand: Dictionary = hands[hand_index]
-	var showdown: Dictionary = hand.get("showdown", {}) as Dictionary
-	var payouts: Array = showdown.get("payouts", []) as Array
 	var next_index: int = int(duty.state.get("payout_index", 0)) + 1
-	if next_index < payouts.size():
-		_enqueue_payout_from_data(payouts[next_index], next_index)
+	if next_index < current_payouts.size():
+		_enqueue_payout_from_data(current_payouts[next_index], next_index)
 	else:
 		_finish_hand()
 
 
 func _finish_hand() -> void:
 	betting_running = false
+	current_payouts.clear()
 	scheduled_events.clear()
 	headline_label.text = "HAND COMPLETE"
 	event_label.text = "다음 핸드를 준비합니다."
