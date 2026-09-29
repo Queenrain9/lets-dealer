@@ -1,23 +1,30 @@
 extends SceneTree
 
 func _init() -> void:
-	var exit_code := _run()
+	var exit_code: int = _run()
 	quit(exit_code)
 
 func _run() -> int:
-	var table_config := load("res://data/table_configs/prototype_table.tres") as TableConfig
-	if table_config == null:
-		return _fail("Prototype TableConfig failed to load.")
+	var table_config: TableConfig = load(
+		"res://data/table_configs/prototype_table.tres"
+	) as TableConfig
+	var hand_config: PrototypeHandConfig = load(
+		"res://data/prototype_hands/core_hand_01.tres"
+	) as PrototypeHandConfig
 
-	var game := DealerGameState.new()
+	if table_config == null or hand_config == null:
+		return _fail("Prototype gameplay configuration failed to load.")
+
+	var game: DealerGameState = DealerGameState.new()
 	game.configure(table_config)
+	game.configure_prototype_hand(hand_config)
 	game.start_hand()
 
-	var dealt_count := 0
-	var expected_total := table_config.seat_count * table_config.cards_per_player
+	var dealt_count: int = 0
+	var expected_total: int = table_config.seat_count * table_config.cards_per_player
 
 	while game.table.hand.phase == HandState.Phase.DEALING:
-		var seat_index := game.expected_deal_seat()
+		var seat_index: int = game.expected_deal_seat()
 		if seat_index < 0:
 			return _fail("DealerGameState returned an invalid expected seat.")
 		if not game.try_deal_card_to_seat(seat_index):
@@ -33,8 +40,32 @@ func _run() -> int:
 	if game.table.hand.phase != HandState.Phase.BETTING_PREFLOP:
 		return _fail("Hand did not enter BETTING_PREFLOP after dealing.")
 
+	if game.pending_bet_total() != 100:
+		return _fail("Expected 100 in pending bets.")
+
+	if game.advance_prototype_phase():
+		return _fail("Flop advanced before all betting chips were collected.")
+
+	var collected_count: int = 0
+	for seat_index in range(game.table.seats.size()):
+		var seat: PlayerSeat = game.table.get_seat(seat_index)
+		if seat.current_bet > 0:
+			if not game.try_collect_bet_from_seat(seat_index):
+				return _fail("A valid chip collection was rejected.")
+			collected_count += 1
+
+	if collected_count != 3:
+		return _fail("Expected three betting stacks to collect.")
+
+	if game.table.hand.pot.main_pot != 100:
+		return _fail("Expected main pot 100, got %d." % game.table.hand.pot.main_pot)
+
+	if not game.all_bets_collected():
+		return _fail("Pending bets remained after collection.")
+
 	for _step in range(6):
-		game.advance_prototype_phase()
+		if not game.advance_prototype_phase():
+			return _fail("A valid prototype phase advance was rejected.")
 
 	if game.table.hand.board.size() != 5:
 		return _fail("Expected 5 board cards, got %d." % game.table.hand.board.size())
@@ -45,8 +76,8 @@ func _run() -> int:
 	if game.result.mistakes != 0:
 		return _fail("Smoke test unexpectedly recorded a mistake.")
 
-	if game.result.perfect_actions != dealt_count:
-		return _fail("Perfect action count does not match dealt card count.")
+	if game.result.perfect_actions != dealt_count + collected_count:
+		return _fail("Perfect action count does not match completed dealer actions.")
 
 	print("LET'S DEALER core smoke test passed.")
 	return 0
