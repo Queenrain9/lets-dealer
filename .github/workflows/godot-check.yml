@@ -37,5 +37,8 @@ jobs:
       - name: Check stage 1 dealer management loop
         run: godot --headless --path . --script res://tests/stage1_dealer_management_smoke_test.gd
 
+      - name: Check stage 2 live shift
+        run: godot --headless --path . --script res://tests/stage2_live_shift_smoke_test.gd
+
       - name: Launch main scene
         run: godot --headless --path . --quit-after 2
