@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TableConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/config/table_config.gd" id="1_table_config"]
+
+[resource]
+script = ExtResource("1_table_config")
+id = &"prototype"
+display_name = "Training Table"
+seat_count = 4
+starting_stack = 1000
+small_blind = 10
+big_blind = 20
+cards_per_player = 2
