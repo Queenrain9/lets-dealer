@@ -128,3 +128,17 @@ Godot 4.x에서 저장소 루트를 프로젝트로 Import한 뒤 실행합니�
 기준 viewport는 **720 × 1280 portrait**이며 `canvas_items` stretch를 사용합니다.
 
 현재 단계에서는 최종 캐릭터 일러스트나 시안 이미지를 프로젝트 내부 아트로 사용하지 않습니다. 첨부 시안은 장기적인 제품 방향과 플레이 감각의 참고 자료입니다.
+
+
+## 자동 검증
+
+`.github/workflows/godot-check.yml`은 Godot 4.7.2에서 프로젝트를 headless import/parse하고, `tests/core_smoke_test.gd`로 다음 핵심 흐름을 확인하도록 준비되어 있습니다.
+
+- 설정 Resource 로드
+- Hand 시작
+- 올바른 좌석 순서로 8장 배분
+- Betting → Flop → Turn → River → Showdown → Payout → Complete 전이
+- Board 5장 생성
+- Perfect / Mistake 결과 상태 확인
+
+이 smoke test는 최종 게임 플레이 테스트를 대체하지 않으며, 핵심 상태 구조가 깨지는 회귀를 빠르게 잡기 위한 최소 안전망입니다.
