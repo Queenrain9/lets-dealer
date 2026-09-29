@@ -1,6 +1,6 @@
 extends Control
 
-const BUILD_ID: String = "table-first-stage4-v0.5"
+const BUILD_ID: String = "game-feel-stage5-v0.6"
 
 const BG: Color = Color("0d1218")
 const PANEL: Color = Color("171e27")
@@ -33,6 +33,14 @@ const BET_POSITIONS: Array[Vector2] = [
 	Vector2(392, 286),
 	Vector2(425, 412),
 	Vector2(284, 484),
+]
+const REQUEST_POSITIONS: Array[Vector2] = [
+	Vector2(24, 308),
+	Vector2(36, 92),
+	Vector2(234, 22),
+	Vector2(432, 92),
+	Vector2(444, 308),
+	Vector2(234, 538),
 ]
 var hands: Array[Dictionary] = []
 var roster: Array[NPCProfile] = []
@@ -90,7 +98,6 @@ var showdown_label: Label
 
 var seat_panels: Array[Panel] = []
 var seat_name_labels: Array[Label] = []
-var seat_trait_labels: Array[Label] = []
 var seat_stack_labels: Array[Label] = []
 var seat_state_labels: Array[Label] = []
 var bet_panels: Array[Panel] = []
@@ -215,7 +222,7 @@ func _build_home() -> void:
 	var badge := Label.new()
 	badge.position = Vector2(24, 22)
 	badge.size = Vector2(620, 26)
-	badge.text = "ROOKIE HALL · LIVE SHIFT"
+	badge.text = "ROOKIE HALL · NIGHT SHIFT"
 	badge.add_theme_color_override("font_color", ACCENT)
 	badge.add_theme_font_size_override("font_size", 13)
 	hero.add_child(badge)
@@ -223,7 +230,7 @@ func _build_home() -> void:
 	var h1 := Label.new()
 	h1.position = Vector2(24, 76)
 	h1.size = Vector2(620, 105)
-	h1.text = "테이블은 당신을\n기다려주지 않습니다"
+	h1.text = "첫 번째\n나이트 시프트"
 	h1.add_theme_font_size_override("font_size", 31)
 	h1.add_theme_color_override("font_color", TEXT)
 	hero.add_child(h1)
@@ -231,7 +238,7 @@ func _build_home() -> void:
 	var desc := Label.new()
 	desc.position = Vector2(24, 198)
 	desc.size = Vector2(620, 110)
-	desc.text = "손님들은 자동으로 Fold / Call / Raise / All-in 합니다.\n요청도 끼어듭니다. 테이블을 보고 필요한 업무를 직접 처리하세요."
+	desc.text = "3 HANDS · 6 MAX\n팁과 FLOW를 유지하며 근무를 마치세요."
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.add_theme_font_size_override("font_size", 16)
 	desc.add_theme_color_override("font_color", MUTED)
@@ -240,7 +247,7 @@ func _build_home() -> void:
 	var start := Button.new()
 	start.position = Vector2(24, 350)
 	start.size = Vector2(624, 80)
-	start.text = "LIVE SHIFT 시작"
+	start.text = "SHIFT START"
 	start.add_theme_font_size_override("font_size", 20)
 	start.add_theme_stylebox_override("normal", _style(ACCENT, ACCENT, 0, 16))
 	start.add_theme_color_override("font_color", Color("261b08"))
@@ -256,17 +263,17 @@ func _build_home() -> void:
 	var ititle := Label.new()
 	ititle.position = Vector2(20, 18)
 	ititle.size = Vector2(620, 28)
-	ititle.text = "이번 버전의 변화"
+	ititle.text = "SHIFT CONDITIONS"
 	ititle.add_theme_font_size_override("font_size", 18)
 	ititle.add_theme_color_override("font_color", TEXT)
 	info.add_child(ititle)
 
 	var lines: Array[String] = [
-		"DECK을 탭하면 딜 또는 다음 스트리트 진행",
-		"베팅 종료 후 중앙 POT을 탭하면 칩 자동 정리",
-		"손님 요청은 해당 좌석이나 요청 버블을 직접 탭",
-		"SHOWDOWN은 POT 탭 → 승자 좌석 탭",
-		"FLOOR는 테이블이 꼬일 때만 나타남",
+		"3 HANDS",
+		"6 MAX TABLE",
+		"NPC PERSONALITIES",
+		"DYNAMIC REQUESTS",
+		"FLOW BONUS ACTIVE",
 	]
 	for i in range(lines.size()):
 		var item := Label.new()
@@ -294,7 +301,7 @@ func _build_game() -> void:
 func _build_table_status() -> void:
 	var status := Panel.new()
 	status.position = Vector2(24, 10)
-	status.size = Vector2(672, 108)
+	status.size = Vector2(672, 72)
 	status.add_theme_stylebox_override("panel", _style(PANEL, INFO, 2, 17))
 	game_layer.add_child(status)
 
@@ -309,10 +316,11 @@ func _build_table_status() -> void:
 	pressure_label = Label.new()
 	pressure_label.position = Vector2(470, 10)
 	pressure_label.size = Vector2(184, 22)
-	pressure_label.text = "TABLE CLEAR"
+	pressure_label.text = ""
 	pressure_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	pressure_label.add_theme_color_override("font_color", GOOD)
 	pressure_label.add_theme_font_size_override("font_size", 12)
+	pressure_label.visible = false
 	status.add_child(pressure_label)
 
 	headline_label = Label.new()
@@ -324,19 +332,17 @@ func _build_table_status() -> void:
 	status.add_child(headline_label)
 
 	event_label = Label.new()
-	event_label.position = Vector2(18, 67)
-	event_label.size = Vector2(636, 30)
+	event_label.position = Vector2.ZERO
+	event_label.size = Vector2.ZERO
 	event_label.text = ""
-	event_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	event_label.add_theme_font_size_override("font_size", 13)
-	event_label.add_theme_color_override("font_color", MUTED)
+	event_label.visible = false
 	status.add_child(event_label)
 
 
 func _build_table() -> void:
 	table = Panel.new()
-	table.position = Vector2(34, 134)
-	table.size = Vector2(652, 628)
+	table.position = Vector2(34, 98)
+	table.size = Vector2(652, 664)
 	table.add_theme_stylebox_override("panel", _style(FELT, Color("755b32"), 6, 54))
 	game_layer.add_child(table)
 
@@ -369,31 +375,20 @@ func _create_seat(index: int) -> void:
 	seat.add_child(name_label)
 	seat_name_labels.append(name_label)
 
-	var trait_label := Label.new()
-	trait_label.position = Vector2(8, 27)
-	trait_label.size = Vector2(138, 18)
-	trait_label.text = "REGULAR"
-	trait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	trait_label.add_theme_font_size_override("font_size", 10)
-	trait_label.add_theme_color_override("font_color", INFO)
-	trait_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	seat.add_child(trait_label)
-	seat_trait_labels.append(trait_label)
-
 	var stack_label := Label.new()
-	stack_label.position = Vector2(8, 45)
-	stack_label.size = Vector2(138, 20)
+	stack_label.position = Vector2(8, 31)
+	stack_label.size = Vector2(138, 22)
 	stack_label.text = _format_amount(PLAYER_STACKS[index])
 	stack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stack_label.add_theme_font_size_override("font_size", 12)
+	stack_label.add_theme_font_size_override("font_size", 13)
 	stack_label.add_theme_color_override("font_color", ACCENT)
 	stack_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seat.add_child(stack_label)
 	seat_stack_labels.append(stack_label)
 
 	var state_label := Label.new()
-	state_label.position = Vector2(8, 66)
-	state_label.size = Vector2(138, 32)
+	state_label.position = Vector2(8, 57)
+	state_label.size = Vector2(138, 40)
 	state_label.text = "WAIT"
 	state_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	state_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -494,15 +489,15 @@ func _create_pots() -> void:
 
 func _create_request_panel() -> void:
 	request_panel = Panel.new()
-	request_panel.position = Vector2(440, 500)
-	request_panel.size = Vector2(184, 76)
+	request_panel.position = Vector2(444, 308)
+	request_panel.size = Vector2(184, 62)
 	request_panel.visible = false
 	request_panel.add_theme_stylebox_override("panel", _style(Color("282136"), PURPLE, 2, 13))
 	table.add_child(request_panel)
 
 	request_label = Label.new()
 	request_label.position = Vector2(8, 7)
-	request_label.size = Vector2(168, 62)
+	request_label.size = Vector2(168, 48)
 	request_label.text = ""
 	request_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	request_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -564,22 +559,13 @@ func _create_bets() -> void:
 
 func _build_dealer_rail() -> void:
 	dealer_rail = Panel.new()
-	dealer_rail.position = Vector2(34, 778)
-	dealer_rail.size = Vector2(652, 112)
+	dealer_rail.position = Vector2(34, 774)
+	dealer_rail.size = Vector2(652, 92)
 	dealer_rail.add_theme_stylebox_override("panel", _style(Color("121920"), Color("604d32"), 2, 18))
 	game_layer.add_child(dealer_rail)
 
-	var rail_title := Label.new()
-	rail_title.position = Vector2(18, 10)
-	rail_title.size = Vector2(150, 20)
-	rail_title.text = "DEALER RAIL"
-	rail_title.add_theme_font_size_override("font_size", 11)
-	rail_title.add_theme_color_override("font_color", MUTED)
-	rail_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dealer_rail.add_child(rail_title)
-
 	deck_panel = Panel.new()
-	deck_panel.position = Vector2(268, 18)
+	deck_panel.position = Vector2(268, 8)
 	deck_panel.size = Vector2(116, 76)
 	deck_panel.pivot_offset = deck_panel.size * 0.5
 	deck_panel.add_theme_stylebox_override("panel", _style(Color("e8e3d8"), Color("c8ac70"), 2, 9))
@@ -591,7 +577,7 @@ func _build_dealer_rail() -> void:
 	deck_label.text = "DECK"
 	deck_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	deck_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	deck_label.add_theme_font_size_override("font_size", 15)
+	deck_label.add_theme_font_size_override("font_size", 14)
 	deck_label.add_theme_color_override("font_color", Color("171b20"))
 	deck_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	deck_panel.add_child(deck_label)
@@ -606,20 +592,16 @@ func _build_dealer_rail() -> void:
 	deck_panel.add_child(deck_hit)
 
 	context_label = Label.new()
-	context_label.position = Vector2(18, 39)
-	context_label.size = Vector2(224, 50)
-	context_label.text = "TABLE LIVE"
-	context_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	context_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	context_label.add_theme_font_size_override("font_size", 12)
-	context_label.add_theme_color_override("font_color", MUTED)
-	context_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	context_label.position = Vector2.ZERO
+	context_label.size = Vector2.ZERO
+	context_label.text = ""
+	context_label.visible = false
 	dealer_rail.add_child(context_label)
 
 	floor_button = Button.new()
-	floor_button.position = Vector2(500, 30)
-	floor_button.size = Vector2(132, 54)
-	floor_button.text = "CALL FLOOR"
+	floor_button.position = Vector2(504, 19)
+	floor_button.size = Vector2(128, 54)
+	floor_button.text = "FLOOR"
 	floor_button.visible = false
 	floor_button.add_theme_font_size_override("font_size", 12)
 	floor_button.add_theme_stylebox_override("normal", _style(Color("202936"), BAD, 1, 12))
@@ -629,28 +611,13 @@ func _build_dealer_rail() -> void:
 
 
 func _build_history_panel() -> void:
-	var panel := Panel.new()
-	panel.position = Vector2(24, 908)
-	panel.size = Vector2(672, 250)
-	panel.add_theme_stylebox_override("panel", _style(Color("111820"), LINE, 1, 15))
-	game_layer.add_child(panel)
-
-	var title := Label.new()
-	title.position = Vector2(14, 8)
-	title.size = Vector2(120, 20)
-	title.text = "TABLE LOG"
-	title.add_theme_font_size_override("font_size", 11)
-	title.add_theme_color_override("font_color", MUTED)
-	panel.add_child(title)
-
+	var hidden_log := Control.new()
+	hidden_log.visible = false
+	game_layer.add_child(hidden_log)
 	for i in range(3):
 		var line := Label.new()
-		line.position = Vector2(14, 46 + i * 48)
-		line.size = Vector2(644, 38)
 		line.text = "—"
-		line.add_theme_font_size_override("font_size", 12)
-		line.add_theme_color_override("font_color", MUTED)
-		panel.add_child(line)
+		hidden_log.add_child(line)
 		history_labels.append(line)
 
 
@@ -680,7 +647,7 @@ func _build_complete() -> void:
 	var subtitle := Label.new()
 	subtitle.position = Vector2(24, 95)
 	subtitle.size = Vector2(580, 40)
-	subtitle.text = "ROOKIE HALL · 3 HANDS"
+	subtitle.text = "ROOKIE HALL · NIGHT SHIFT"
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.add_theme_font_size_override("font_size", 16)
 	subtitle.add_theme_color_override("font_color", MUTED)
@@ -748,7 +715,7 @@ func _show_home() -> void:
 	if floor_button != null:
 		floor_button.visible = false
 	if context_label != null:
-		context_label.text = "TABLE LIVE"
+		context_label.text = ""
 
 
 func _start_shift() -> void:
@@ -794,8 +761,8 @@ func _start_hand() -> void:
 
 	var hand: Dictionary = hands[hand_index]
 	phase_label.text = String(hand.get("label", "HAND"))
-	headline_label.text = "NEW HAND · 셔플과 컷 완료"
-	event_label.text = "플레이어들이 딜을 기다리고 있습니다."
+	headline_label.text = "HAND START"
+	event_label.text = ""
 	showdown_panel.visible = false
 	request_panel.visible = false
 	main_pot_label.text = "MAIN POT  0"
@@ -826,7 +793,7 @@ func _start_hand() -> void:
 	_append_history("— %s START" % String(hand.get("label", "HAND")), INFO)
 	_refresh_hud()
 	_refresh_pressure()
-	context_label.text = "DECK · 새 핸드 시작"
+	context_label.text = ""
 
 
 func _schedule_betting_round(street: String) -> void:
@@ -841,9 +808,9 @@ func _schedule_betting_round(street: String) -> void:
 	scheduled_events.clear()
 	street_elapsed = 0.0
 	betting_running = true
-	headline_label.text = "%s · PLAYER ACTION" % street.to_upper()
-	event_label.text = "플레이어 액션이 진행 중입니다."
-	context_label.text = "TABLE LIVE · 액션 관찰"
+	headline_label.text = street.to_upper()
+	event_label.text = ""
+	context_label.text = ""
 
 	var raw_events: Variant = round_data.get("events", [])
 	var last_time: float = 0.0
@@ -903,9 +870,14 @@ func _spawn_service_request(event: Dictionary) -> void:
 	var text_value: String = String(event.get("text", "칩 교환 요청"))
 	var patience: float = float(event.get("patience", 5.0))
 	request_panel.visible = true
-	request_label.text = text_value
+	if seat >= 0 and seat < REQUEST_POSITIONS.size():
+		request_panel.position = REQUEST_POSITIONS[seat]
+	var bubble_text: String = text_value
+	if seat >= 0:
+		bubble_text = bubble_text.replace(_seat_name(seat) + " · ", "")
+	request_label.text = bubble_text
 	if seat >= 0 and seat < seat_panels.size():
-		seat_panels[seat].add_theme_stylebox_override("panel", _style(Color("282136"), PURPLE, 3, 14))
+		seat_panels[seat].add_theme_stylebox_override("panel", _style(Color("282136"), PURPLE, 2, 14))
 		seat_state_labels[seat].text = "REQUEST"
 
 	_enqueue_duty(DealerTask.new({
@@ -939,8 +911,8 @@ func _on_betting_closed(street: String) -> void:
 		return
 
 	headline_label.text = "%s · ACTION CLOSED" % street.to_upper()
-	event_label.text = "테이블 위 베팅칩은 그대로 남아 있습니다."
-	context_label.text = "테이블 위 칩을 보고 POT을 처리"
+	event_label.text = ""
+	context_label.text = ""
 	_enqueue_duty(DealerTask.new({
 		"id": "collect_%s_%d" % [street, hand_index],
 		"phase": street.to_upper(),
@@ -959,9 +931,9 @@ func _on_betting_closed(street: String) -> void:
 
 func _enqueue_board_duty(next_street: String) -> void:
 	var label: String = next_street.to_upper()
-	headline_label.text = "%s · TABLE READY" % label
-	event_label.text = "다음 스트리트를 진행할 수 있습니다."
-	context_label.text = "DECK 또는 BOARD로 다음 스트리트"
+	headline_label.text = label
+	event_label.text = ""
+	context_label.text = ""
 	_enqueue_duty(DealerTask.new({
 		"id": "board_%s_%d" % [next_street, hand_index],
 		"phase": label,
@@ -980,8 +952,8 @@ func _enqueue_showdown() -> void:
 	showdown_panel.visible = true
 	showdown_label.text = String(showdown.get("text", "SHOWDOWN"))
 	headline_label.text = "SHOWDOWN"
-	event_label.text = "핸드가 공개되었습니다. 팟을 정산하세요."
-	context_label.text = "POT을 탭해서 지급 시작"
+	event_label.text = ""
+	context_label.text = ""
 	var payouts: Array = showdown.get("payouts", []) as Array
 	if payouts.is_empty():
 		_finish_hand()
@@ -1017,6 +989,7 @@ func _enqueue_payout_from_data(raw: Variant, payout_index: int) -> void:
 func _enqueue_duty(duty: DealerTask) -> void:
 	duty.reset_clock()
 	pending_duties.append(duty)
+	_signal_duty_affordance(duty)
 	_refresh_pressure()
 
 
@@ -1034,7 +1007,7 @@ func _age_pending_duties(delta: float) -> void:
 					warning = roster[duty.source_seat].warning_line
 				_show_feedback("%s: %s" % [seat_name, warning], ACCENT)
 			elif duty.blocking:
-				_show_feedback("TABLE WAITING...", ACCENT)
+				_show_feedback("…", ACCENT)
 
 		if duty.age < duty.patience_limit:
 			continue
@@ -1045,8 +1018,8 @@ func _age_pending_duties(delta: float) -> void:
 				duty.state["overdue_penalized"] = true
 				mistakes += 1
 				flow_combo = 0
-				_append_history("× TABLE DELAY · FLOW LOST", BAD)
-				_show_feedback("TABLE DELAY", BAD)
+				_append_history("× FLOW LOST", BAD)
+				_show_feedback("FLOW LOST", BAD)
 				_refresh_hud()
 		else:
 			pending_duties.remove_at(i)
@@ -1144,7 +1117,7 @@ func _find_pending_duty(action_id: String) -> DealerTask:
 func _begin_payout_targeting(duty: DealerTask) -> void:
 	active_payout_duty = duty
 	payout_targeting = true
-	context_label.text = "POT 선택됨 · 지급할 승자 좌석을 탭"
+	context_label.text = ""
 	_show_feedback("PAYOUT MODE", INFO)
 	_apply_payout_eligibility(duty)
 
@@ -1180,8 +1153,7 @@ func _on_seat_pressed(seat_index: int) -> void:
 			_resolve_duty(duty)
 			return
 
-	if seat_index >= 0 and seat_index < roster.size():
-		_show_feedback("%s · %s" % [roster[seat_index].display_name, roster[seat_index].trait_label], INFO)
+	return
 
 
 func _resolve_duty(duty: DealerTask) -> void:
@@ -1317,22 +1289,26 @@ func _play_duty_feedback(duty: DealerTask) -> void:
 
 
 func _register_invalid_action(area_id: String) -> void:
-	mistakes += 1
-	flow_combo = 0
-	var message: String = "지금 처리할 것이 없습니다"
+	var message: String = ""
+	var real_error: bool = false
 	if area_id == "board" and _find_pending_duty("pot") != null:
-		message = "베팅칩이 아직 테이블에 있습니다"
-	elif area_id == "board":
-		message = "아직 다음 보드를 열 차례가 아닙니다"
-	elif area_id == "pot" and not _visible_bets_exist():
-		message = "지금 POT에서 처리할 것이 없습니다"
+		message = "칩이 아직 남아 있다."
+		real_error = true
 	elif area_id == "deck" and betting_running:
-		message = "플레이어 액션이 아직 진행 중입니다"
+		message = "액션 진행 중"
+	elif area_id == "pot" and not _visible_bets_exist():
+		message = ""
+	elif area_id == "board":
+		message = ""
 	elif area_id == "deck":
-		message = "지금은 DECK을 건드릴 차례가 아닙니다"
-	_show_feedback(message, BAD)
-	_append_history("× %s" % message, BAD)
-	_refresh_hud()
+		message = ""
+
+	if real_error:
+		mistakes += 1
+		flow_combo = 0
+		_refresh_hud()
+	if not message.is_empty():
+		_show_feedback(message, BAD if real_error else MUTED)
 
 
 func _use_floor_assist() -> void:
@@ -1422,12 +1398,39 @@ func _refresh_pressure() -> void:
 func _refresh_floor_affordance() -> void:
 	if floor_button == null:
 		return
-	var urgent: bool = pending_duties.size() >= 2
+	var urgent: bool = false
 	for duty in pending_duties:
 		if duty.warned or bool(duty.state.get("overdue_penalized", false)):
 			urgent = true
 			break
 	floor_button.visible = session_active and urgent
+
+
+
+func _signal_duty_affordance(duty: DealerTask) -> void:
+	match duty.expected_action:
+		"deal":
+			_soft_nudge(deck_panel)
+		"board":
+			_soft_nudge(deck_panel)
+			_soft_nudge(board_panel)
+		"pot":
+			_soft_nudge(pot_panel)
+		"chip_change":
+			if duty.source_seat >= 0 and duty.source_seat < seat_panels.size():
+				_soft_nudge(seat_panels[duty.source_seat])
+			_soft_nudge(request_panel)
+		"payout":
+			_soft_nudge(pot_panel)
+
+
+func _soft_nudge(control: Control) -> void:
+	if control == null or not control.visible:
+		return
+	control.pivot_offset = control.size * 0.5
+	var tween := create_tween()
+	tween.tween_property(control, "scale", Vector2(1.025, 1.025), 0.12)
+	tween.tween_property(control, "scale", Vector2.ONE, 0.16)
 
 
 func _visible_bets_exist() -> bool:
@@ -1543,19 +1546,8 @@ func _apply_roster_to_seats() -> void:
 	for i in range(seat_name_labels.size()):
 		if i < roster.size():
 			seat_name_labels[i].text = roster[i].display_name
-			seat_trait_labels[i].text = roster[i].trait_label
-			if roster[i].patience < 0.75:
-				seat_trait_labels[i].add_theme_color_override("font_color", BAD)
-			elif roster[i].request_bias > 1.25:
-				seat_trait_labels[i].add_theme_color_override("font_color", PURPLE)
-			elif roster[i].action_speed > 1.20:
-				seat_trait_labels[i].add_theme_color_override("font_color", MUTED)
-			else:
-				seat_trait_labels[i].add_theme_color_override("font_color", INFO)
 		else:
 			seat_name_labels[i].text = PLAYER_NAMES[i]
-			seat_trait_labels[i].text = "REGULAR"
-			seat_trait_labels[i].add_theme_color_override("font_color", INFO)
 
 
 func _seat_name(index: int) -> String:
