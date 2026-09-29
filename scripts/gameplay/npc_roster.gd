@@ -12,6 +12,7 @@ static func build(seed: int) -> Array[NPCProfile]:
 			"patience": 1.25,
 			"request_bias": 0.65,
 			"tip_multiplier": 1.00,
+			"aggression": 0.95,
 			"warning_line": "천천히 하셔도 돼요.",
 			"miss_line": "아, 요청은 다음에 해도 돼요.",
 			"dialogue": {
@@ -35,6 +36,7 @@ static func build(seed: int) -> Array[NPCProfile]:
 			"patience": 0.62,
 			"request_bias": 0.85,
 			"tip_multiplier": 1.10,
+			"aggression": 1.15,
 			"warning_line": "딜러, 진행 좀요.",
 			"miss_line": "이 테이블 왜 이렇게 느려요?",
 			"dialogue": {
@@ -58,6 +60,7 @@ static func build(seed: int) -> Array[NPCProfile]:
 			"patience": 1.05,
 			"request_bias": 1.35,
 			"tip_multiplier": 0.95,
+			"aggression": 0.85,
 			"warning_line": "저... 이거 맞게 된 거죠?",
 			"miss_line": "저 아직 잘 모르겠어요.",
 			"dialogue": {
@@ -81,6 +84,7 @@ static func build(seed: int) -> Array[NPCProfile]:
 			"patience": 0.82,
 			"request_bias": 1.55,
 			"tip_multiplier": 1.08,
+			"aggression": 1.10,
 			"warning_line": "딜러~ 내 거 잊은 거 아니죠?",
 			"miss_line": "아까부터 말했는데~",
 			"dialogue": {
@@ -104,6 +108,7 @@ static func build(seed: int) -> Array[NPCProfile]:
 			"patience": 0.55,
 			"request_bias": 1.30,
 			"tip_multiplier": 1.45,
+			"aggression": 1.20,
 			"warning_line": "딜러, 바로 처리해 주세요.",
 			"miss_line": "서비스가 이래서야 되겠어요?",
 			"dialogue": {
@@ -127,6 +132,7 @@ static func build(seed: int) -> Array[NPCProfile]:
 			"patience": 1.48,
 			"request_bias": 0.50,
 			"tip_multiplier": 1.00,
+			"aggression": 0.90,
 			"warning_line": "No rush, dealer.",
 			"miss_line": "It's okay. Next time.",
 			"dialogue": {
