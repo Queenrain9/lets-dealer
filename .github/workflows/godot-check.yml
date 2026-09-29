@@ -40,3 +40,6 @@ jobs:
 
       - name: Run native button signal smoke test
         run: godot --headless --path . --script res://tests/real_mouse_input_smoke_test.gd
+
+      - name: Run button-down flow smoke test
+        run: godot --headless --path . --script res://tests/button_down_flow_smoke_test.gd
