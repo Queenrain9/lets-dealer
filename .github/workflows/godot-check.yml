@@ -37,3 +37,6 @@ jobs:
 
       - name: Run forgiving card gesture smoke test
         run: godot --headless --path . --script res://tests/forgiving_card_gesture_smoke_test.gd
+
+      - name: Run real mouse input smoke test
+        run: godot --headless --path . --script res://tests/real_mouse_input_smoke_test.gd
