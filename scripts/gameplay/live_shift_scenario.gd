@@ -52,8 +52,8 @@ static func build() -> Array[Dictionary]:
 		"showdown": {
 			"text": "소연  A♠ A♥\n토니  9♠ 9♥\n찰리  K♣ J♣",
 			"payouts": [
-				{"pot": "MAIN", "amount": 5400, "seat": 2, "tip": 220},
-				{"pot": "SIDE", "amount": 14400, "seat": 5, "tip": 260},
+				{"pot": "MAIN", "amount": 5400, "seat": 2, "tip": 220, "eligible": [2, 3, 5]},
+				{"pot": "SIDE", "amount": 14400, "seat": 5, "tip": 260, "eligible": [3, 5]},
 			],
 		},
 	})
@@ -108,7 +108,7 @@ static func build() -> Array[Dictionary]:
 		"showdown": {
 			"text": "맥스  Q♠ J♠\n찰리  K♦ 10♦",
 			"payouts": [
-				{"pot": "MAIN", "amount": 17600, "seat": 5, "tip": 230},
+				{"pot": "MAIN", "amount": 17600, "seat": 5, "tip": 230, "eligible": [1, 5]},
 			],
 		},
 	})
@@ -163,8 +163,8 @@ static func build() -> Array[Dictionary]:
 		"showdown": {
 			"text": "소연  A♣ Q♣\n찰리  9♦ 9♥",
 			"payouts": [
-				{"pot": "MAIN", "amount": 21800, "seat": 2, "tip": 260},
-				{"pot": "SIDE", "amount": 2400, "seat": 2, "tip": 180},
+				{"pot": "MAIN", "amount": 21800, "seat": 2, "tip": 260, "eligible": [2, 5]},
+				{"pot": "SIDE", "amount": 2400, "seat": 2, "tip": 180, "eligible": [2]},
 			],
 		},
 	})
