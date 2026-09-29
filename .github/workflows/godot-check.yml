@@ -49,5 +49,8 @@ jobs:
       - name: Check stage 5 tutorial removal
         run: godot --headless --path . --script res://tests/stage5_tutorial_removal_smoke_test.gd
 
+      - name: Check stage 6 NPC dialogue
+        run: godot --headless --path . --script res://tests/stage6_npc_dialogue_smoke_test.gd
+
       - name: Launch main scene
         run: godot --headless --path . --quit-after 2
