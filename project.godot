@@ -1,8 +1,14 @@
+; Engine configuration file.
+; LET'S DEALER core gameplay prototype.
+
+config_version=5
+
 [application]
 
 config/name="LET'S DEALER"
 config/description="Mobile dealer-action game core gameplay prototype"
 run/main_scene="res://scenes/table_test.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [display]
 
