@@ -70,7 +70,10 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton:
 		var mouse_button: InputEventMouseButton = event
 		if mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
-			_begin_swipe(MOUSE_POINTER_ID, mouse_button.position)
+			# _gui_input mouse positions are Control-local, while _input motion/release
+			# positions are viewport-space. Normalize the press to viewport-space so
+			# the swipe vector is measured in one coordinate system.
+			_begin_swipe(MOUSE_POINTER_ID, get_viewport().get_mouse_position())
 			accept_event()
 
 func _input(event: InputEvent) -> void:
