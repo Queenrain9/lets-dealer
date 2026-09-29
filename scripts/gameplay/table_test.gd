@@ -1,5 +1,6 @@
 extends Control
 
+const POINTER_NONE: int = -999
 const MOUSE_POINTER_ID: int = -1
 
 enum InteractionKind {
@@ -24,7 +25,7 @@ var card_rows: Array[HBoxContainer] = []
 var chip_stacks: Array[SwipeChipStack] = []
 
 var _interaction_kind: InteractionKind = InteractionKind.NONE
-var _active_pointer_id: int = MOUSE_POINTER_ID
+var _active_pointer_id: int = POINTER_NONE
 var _active_chip_index: int = -1
 var _gesture_start: Vector2 = Vector2.ZERO
 
@@ -100,7 +101,10 @@ func _input(event: InputEvent) -> void:
 			return
 		if mouse_button.pressed:
 			_begin_pointer_interaction(MOUSE_POINTER_ID, mouse_button.position)
-		elif _active_pointer_id == MOUSE_POINTER_ID:
+		elif (
+			_interaction_kind != InteractionKind.NONE
+			and _active_pointer_id == MOUSE_POINTER_ID
+		):
 			_end_pointer_interaction(mouse_button.position)
 		return
 
@@ -179,7 +183,7 @@ func _end_pointer_interaction(_pointer_position: Vector2) -> void:
 			pass
 
 	_interaction_kind = InteractionKind.NONE
-	_active_pointer_id = MOUSE_POINTER_ID
+	_active_pointer_id = POINTER_NONE
 	_active_chip_index = -1
 	_gesture_start = Vector2.ZERO
 	get_viewport().set_input_as_handled()
