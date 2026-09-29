@@ -855,7 +855,7 @@ func _finish_shift() -> void:
 	if result == null:
 		result = _find_result_label()
 	if result != null:
-		var total_actions := max(perfect_actions + mistakes, 1)
+		var total_actions: int = maxi(perfect_actions + mistakes, 1)
 		var accuracy := int(round(float(perfect_actions) / float(total_actions) * 100.0))
 		result.text = "ACCURACY  %d%%\nMAX COMBO  x%d\nMISTAKES  %d\n\nDIRECT-MANIPULATION LOOP COMPLETE" % [accuracy, combo, mistakes]
 	mission_label.text = "SHIFT COMPLETE"
