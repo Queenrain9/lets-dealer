@@ -31,3 +31,6 @@ jobs:
 
       - name: Run repeated deal UI smoke test
         run: godot --headless --path . --script res://tests/repeated_deal_ui_smoke_test.gd
+
+      - name: Run chip and pot UI smoke test
+        run: godot --headless --path . --script res://tests/chip_pot_ui_smoke_test.gd
