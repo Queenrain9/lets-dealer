@@ -1,5 +1,8 @@
 extends Control
 
+const MIN_SWIPE_DISTANCE: float = 42.0
+const MIN_DIRECTION_SCORE: float = 0.35
+
 @onready var phase_label: Label = $PhaseLabel
 @onready var stats_label: Label = $StatsLabel
 @onready var hint_label: Label = $HintLabel
@@ -10,9 +13,11 @@ extends Control
 
 var game: DealerGameState = DealerGameState.new()
 var seat_views: Array[SeatView] = []
+var card_zone_panels: Array[Control] = []
+var card_rows: Array[HBoxContainer] = []
 
 func _ready() -> void:
-	var table_config := load("res://data/table_configs/prototype_table.tres") as TableConfig
+	var table_config: TableConfig = load("res://data/table_configs/prototype_table.tres") as TableConfig
 	if table_config == null:
 		push_error("Could not load prototype table configuration.")
 		return
@@ -26,8 +31,22 @@ func _ready() -> void:
 		$TableSurface/Seat3,
 	]
 
+	card_zone_panels = [
+		$TableSurface/CardZone0,
+		$TableSurface/CardZone1,
+		$TableSurface/CardZone2,
+		$TableSurface/CardZone3,
+	]
+
+	card_rows = [
+		$TableSurface/CardZone0/Cards,
+		$TableSurface/CardZone1/Cards,
+		$TableSurface/CardZone2/Cards,
+		$TableSurface/CardZone3/Cards,
+	]
+
 	for seat_view in seat_views:
-		var seat := game.table.get_seat(seat_view.seat_index)
+		var seat: PlayerSeat = game.table.get_seat(seat_view.seat_index)
 		seat_view.configure(seat.seat_index, seat.display_name, seat.stack)
 
 	game.phase_changed.connect(_on_phase_changed)
@@ -35,8 +54,7 @@ func _ready() -> void:
 	game.mistake_recorded.connect(_on_mistake_recorded)
 	game.hand_completed.connect(_on_hand_completed)
 
-	card_drag.drag_moved.connect(_on_card_drag_moved)
-	card_drag.drag_released.connect(_on_card_released)
+	card_drag.swipe_released.connect(_on_card_swipe_released)
 	start_hand_button.pressed.connect(_on_start_hand_pressed)
 	advance_button.pressed.connect(_on_advance_pressed)
 
@@ -48,7 +66,7 @@ func _on_start_hand_pressed() -> void:
 	_clear_hand_visuals()
 	game.start_hand()
 	_arm_next_card()
-	hint_label.text = "Drag the top card to the highlighted seat."
+	hint_label.text = "Swipe the card toward the highlighted player."
 	_refresh_ui()
 
 func _on_advance_pressed() -> void:
@@ -70,33 +88,103 @@ func _on_advance_pressed() -> void:
 		HandState.Phase.COMPLETE:
 			hint_label.text = "Hand complete. Start the next hand."
 
-func _on_card_drag_moved(pointer_position: Vector2) -> void:
-	for seat_view in seat_views:
-		seat_view.set_hovered(seat_view.get_drop_rect().has_point(pointer_position))
+func _on_card_swipe_released(start_position: Vector2, end_position: Vector2) -> void:
+	if game.table.hand.phase != HandState.Phase.DEALING:
+		card_drag.snap_home()
+		return
 
-func _on_card_released(pointer_position: Vector2) -> void:
-	var dropped_seat_index := -1
+	var swipe_delta: Vector2 = end_position - start_position
+	if swipe_delta.length() < MIN_SWIPE_DISTANCE:
+		card_drag.snap_home()
+		hint_label.text = "Use a short swipe toward the highlighted player."
+		return
 
-	for seat_view in seat_views:
-		seat_view.set_hovered(false)
-		if seat_view.get_drop_rect().has_point(pointer_position):
-			dropped_seat_index = seat_view.seat_index
+	var target_seat_index: int = _resolve_swipe_target(start_position, end_position)
+	if target_seat_index < 0:
+		card_drag.snap_home()
+		hint_label.text = "Swipe upward toward a player, then release."
+		return
 
-	if dropped_seat_index < 0:
-		hint_label.text = "Drop the card on a player seat."
+	var dealt: bool = game.try_deal_card_to_seat(target_seat_index)
+	if not dealt:
+		card_drag.snap_home()
+		_refresh_ui()
+		return
+
+	var seat: PlayerSeat = game.table.get_seat(target_seat_index)
+	var dealt_card_id: String = String(seat.hole_cards.back())
+
+	await _animate_card_to_zone(target_seat_index, dealt_card_id)
+
+	if game.table.hand.phase == HandState.Phase.DEALING:
+		hint_label.text = "Good. Swipe the next card toward the highlighted player."
 	else:
-		var dealt := game.try_deal_card_to_seat(dropped_seat_index)
-		if dealt:
-			var seat := game.table.get_seat(dropped_seat_index)
-			seat_views[dropped_seat_index].add_card(seat.hole_cards.back())
-			if game.table.hand.phase == HandState.Phase.DEALING:
-				hint_label.text = "Good. Continue dealing to the highlighted seat."
-			else:
-				hint_label.text = "Hole cards complete. Prototype betting phase is ready."
+		hint_label.text = "Hole cards complete. Prototype betting phase is ready."
 
-	card_drag.snap_home()
 	_arm_next_card()
 	_refresh_ui()
+
+func _resolve_swipe_target(start_position: Vector2, end_position: Vector2) -> int:
+	var swipe_vector: Vector2 = end_position - start_position
+	if swipe_vector.length() < MIN_SWIPE_DISTANCE:
+		return -1
+
+	var swipe_direction: Vector2 = swipe_vector.normalized()
+	var best_index: int = -1
+	var best_score: float = -1.0
+
+	for index in range(card_zone_panels.size()):
+		var zone: Control = card_zone_panels[index]
+		var target_vector: Vector2 = zone.get_global_rect().get_center() - start_position
+		if target_vector.length_squared() <= 0.001:
+			continue
+
+		var score: float = swipe_direction.dot(target_vector.normalized())
+		if score > best_score:
+			best_score = score
+			best_index = index
+
+	if best_score < MIN_DIRECTION_SCORE:
+		return -1
+
+	return best_index
+
+func _animate_card_to_zone(seat_index: int, card_id: String) -> void:
+	var zone: Control = card_zone_panels[seat_index]
+	var target_center: Vector2 = zone.get_global_rect().get_center()
+	var target_position: Vector2 = target_center - (card_drag.size * 0.5)
+
+	card_drag.set_interaction_enabled(false)
+	await card_drag.fly_to(target_position, 0.15)
+	_add_card_to_zone(seat_index, card_id)
+	card_drag.snap_home()
+
+func _add_card_to_zone(seat_index: int, card_id: String) -> void:
+	var card_panel: PanelContainer = PanelContainer.new()
+	card_panel.custom_minimum_size = Vector2(44, 58)
+	card_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var card_style: StyleBoxFlat = StyleBoxFlat.new()
+	card_style.bg_color = Color(0.94, 0.94, 0.91, 1.0)
+	card_style.border_width_left = 2
+	card_style.border_width_top = 2
+	card_style.border_width_right = 2
+	card_style.border_width_bottom = 2
+	card_style.border_color = Color(0.2, 0.22, 0.26, 1.0)
+	card_style.corner_radius_top_left = 7
+	card_style.corner_radius_top_right = 7
+	card_style.corner_radius_bottom_left = 7
+	card_style.corner_radius_bottom_right = 7
+	card_panel.add_theme_stylebox_override("panel", card_style)
+
+	var card_label: Label = Label.new()
+	card_label.text = card_id
+	card_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	card_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	card_label.add_theme_color_override("font_color", Color(0.08, 0.09, 0.11, 1.0))
+	card_panel.add_child(card_label)
+
+	card_rows[seat_index].add_child(card_panel)
 
 func _on_phase_changed(_phase: int) -> void:
 	_refresh_ui()
@@ -127,6 +215,11 @@ func _clear_hand_visuals() -> void:
 		seat_view.clear_cards()
 		seat_view.set_hovered(false)
 		seat_view.set_targeted(false)
+
+	for card_row in card_rows:
+		for child in card_row.get_children():
+			child.queue_free()
+
 	_clear_board()
 
 func _clear_board() -> void:
@@ -137,10 +230,10 @@ func _refresh_board() -> void:
 	_clear_board()
 
 	for card_id in game.table.hand.board:
-		var card_panel := PanelContainer.new()
+		var card_panel: PanelContainer = PanelContainer.new()
 		card_panel.custom_minimum_size = Vector2(64, 84)
 
-		var card_label := Label.new()
+		var card_label: Label = Label.new()
 		card_label.text = card_id
 		card_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -156,8 +249,8 @@ func _refresh_ui() -> void:
 		game.result.combo,
 	]
 
-	var phase := game.table.hand.phase
-	var can_start := phase == HandState.Phase.IDLE or phase == HandState.Phase.COMPLETE
+	var phase: HandState.Phase = game.table.hand.phase
+	var can_start: bool = phase == HandState.Phase.IDLE or phase == HandState.Phase.COMPLETE
 	start_hand_button.disabled = not can_start
 	start_hand_button.text = "NEXT HAND" if phase == HandState.Phase.COMPLETE else "START HAND"
 
