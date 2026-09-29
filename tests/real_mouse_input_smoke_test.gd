@@ -24,12 +24,12 @@ func _run() -> void:
 		return
 
 	for expected_count in range(1, 9):
-		card.pressed.emit()
+		card.button_down.emit()
 		await process_frame
 
 		if game.table.hand.cards_dealt != expected_count:
 			_fail(
-				"Native card Button signal failed on deal %d. cards_dealt=%d."
+				"Card button_down signal failed on deal %d. cards_dealt=%d."
 				% [expected_count, game.table.hand.cards_dealt]
 			)
 			return
@@ -48,24 +48,24 @@ func _run() -> void:
 			_fail("Expected betting Button %d was not available." % chip_index)
 			return
 
-		chip.pressed.emit()
+		chip.button_down.emit()
 		await process_frame
 
 	if game.table.hand.pot.main_pot != 100:
 		_fail(
-			"Native chip Button signals did not create POT 100. Got %d."
+			"Chip button_down signals did not create POT 100. Got %d."
 			% game.table.hand.pot.main_pot
 		)
 		return
 
 	if not game.all_bets_collected():
-		_fail("Native chip Button signals left pending bets.")
+		_fail("Chip button_down signals left pending bets.")
 		return
 
-	print("LET'S DEALER native card/chip Button signal test passed.")
+	print("LET'S DEALER button-down card/chip signal test passed.")
 	scene.queue_free()
 	quit(0)
 
 func _fail(message: String) -> void:
-	push_error("LET'S DEALER native Button signal test failed: " + message)
+	push_error("LET'S DEALER button-down signal test failed: " + message)
 	quit(1)
